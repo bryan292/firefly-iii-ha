@@ -1,0 +1,45 @@
+name: "Firefly III"
+description: "Firefly III: A free and open source personal finance manager"
+version: "1.0.0"
+slug: "firefly_iii"
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+webui: http://[HOST]:[PORT:8080]
+ingress: true
+ingress_port: 8080
+panel_icon: mdi:fire
+ports:
+  8080/tcp: 8080
+ports_description:
+  8080/tcp: Web interface
+services:
+  - mysql:want
+options:
+  app_url: ""
+  database:
+    engine: "mysql"
+    host: "core-mariadb"
+    port: 3306
+    username: "firefly"
+    password: ""
+    database: "firefly"
+  timezone: "UTC"
+  admin_email: "admin@example.com"
+  log_level: "info"
+schema:
+  app_url: "str?"
+  database:
+    engine: "list(mysql)"
+    host: "str"
+    port: "port"
+    username: "str"
+    password: "password"
+    database: "str"
+  timezone: "list(UTC|America/New_York|America/Chicago|America/Denver|America/Los_Angeles|Europe/London|Europe/Paris|Europe/Berlin|Europe/Amsterdam|Asia/Tokyo|Asia/Shanghai|Australia/Sydney)"
+  admin_email: "email"
+  log_level: "list(trace|debug|info|notice|warning|error|fatal)"
