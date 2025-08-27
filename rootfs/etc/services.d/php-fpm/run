@@ -1,0 +1,8 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting PHP-FPM..."
+# Find the PHP version
+PHP_VERSION=$(find /usr/sbin -name "php-fpm*" | sort | tail -n 1 | sed 's/.*php-fpm\(.*\)/\1/')
+if [ -z "$PHP_VERSION" ]; then
+    PHP_VERSION="7.4"  # Default fallback
+fi
+exec php-fpm${PHP_VERSION} --nodaemonize

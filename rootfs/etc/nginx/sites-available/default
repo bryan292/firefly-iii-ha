@@ -1,0 +1,44 @@
+server {
+    listen 8080 default_server;
+    listen [::]:8080 default_server;
+    
+    root /var/www/firefly-iii/public;
+    index index.php index.html index.htm;
+    server_name _;
+    
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+    
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        # Try different PHP-FPM socket versions, from 8.2 down to 7.3
+        set $fpm_socket "unix:/var/run/php/php7.4-fpm.sock";
+        
+        if (-e "/var/run/php/php8.2-fpm.sock") {
+            set $fpm_socket "unix:/var/run/php/php8.2-fpm.sock";
+        }
+        
+        if (-e "/var/run/php/php8.1-fpm.sock") {
+            set $fpm_socket "unix:/var/run/php/php8.1-fpm.sock";
+        }
+        
+        if (-e "/var/run/php/php8.0-fpm.sock") {
+            set $fpm_socket "unix:/var/run/php/php8.0-fpm.sock";
+        }
+        
+        if (-e "/var/run/php/php7.4-fpm.sock") {
+            set $fpm_socket "unix:/var/run/php/php7.4-fpm.sock";
+        }
+        
+        if (-e "/var/run/php/php7.3-fpm.sock") {
+            set $fpm_socket "unix:/var/run/php/php7.3-fpm.sock";
+        }
+        
+        fastcgi_pass $fpm_socket;
+    }
+    
+    location ~ /\.ht {
+        deny all;
+    }
+}

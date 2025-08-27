@@ -1,0 +1,38 @@
+name: "Firefly III"
+description: "Firefly III - A free and open source personal finance manager"
+version: "1.0.0"
+slug: "firefly_iii"
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+ports:
+  8080/tcp: 8080
+webui: "http://[HOST]:[PORT:8080]"
+ports_description:
+  8080/tcp: "Web interface"
+options:
+  database_type: "internal"
+  database_host: "core-mariadb"
+  database_port: 3306
+  database_name: "firefly"
+  database_username: "firefly"
+  database_password: ""
+  app_key: ""
+  trusted_proxies: "**"
+schema:
+  database_type: list(internal|external)
+  database_host: str?
+  database_port: port?
+  database_name: str?
+  database_username: str?
+  database_password: str
+  app_key: str
+  trusted_proxies: str
+services:
+  - name: mysql
+    need: "mariadb:want"
+image: "ghcr.io/home-assistant-addons/firefly-iii/{arch}"
