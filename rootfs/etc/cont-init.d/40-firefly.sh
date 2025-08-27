@@ -55,6 +55,11 @@ bashio::log.info "Using Ingress URL: ${app_url}"
 # Ensure the URL doesn't have a trailing slash
 app_url=${app_url%/}
 
+# Create log directory with proper permissions
+mkdir -p /var/www/html/storage/logs
+chmod -R 777 /var/www/html/storage/logs
+chown -R nginx:nginx /var/www/html/storage/logs
+
 # Setup environment file
 cat > /var/www/html/.env << EOF
 APP_ENV=production
@@ -97,6 +102,10 @@ APP_NAME="Firefly III on Home Assistant"
 SITE_OWNER=${admin_email}
 ASSET_URL=${app_url}
 
+# Logging to file settings
+LOG_CHANNEL=stack
+LOG_LEVEL=debug
+
 # Additional authentication drivers
 AUTHENTICATION_GUARD=web
 AUTHENTICATION_GUARD_HEADER=REMOTE_USER
@@ -114,6 +123,21 @@ elif command -v mariadb >/dev/null 2>&1; then
 else
     bashio::log.warning "No MySQL/MariaDB client found, skipping database creation"
 fi
+
+# Create and set permissions for storage directories before Laravel commands
+bashio::log.info "Setting up storage directories..."
+mkdir -p /var/www/html/storage/app/public
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+mkdir -p /var/www/html/storage/logs
+mkdir -p /var/www/html/bootstrap/cache
+
+# Apply permissions to all storage directories
+chmod -R 777 /var/www/html/storage
+chmod -R 777 /var/www/html/bootstrap/cache
+chown -R nginx:nginx /var/www/html/storage
+chown -R nginx:nginx /var/www/html/bootstrap/cache
 
 # Cache configurations
 bashio::log.info "Setting up Laravel application..."
@@ -181,22 +205,21 @@ else
     bashio::log.info "No admin email provided, skipping user creation."
 fi
 
-# Set permissions
-bashio::log.info "Setting file permissions..."
+# Double-check permissions after all operations
+bashio::log.info "Finalizing file permissions..."
 find /var/www/html -type d -exec chmod 755 {} \;
 find /var/www/html -type f -exec chmod 644 {} \;
-chmod -R 775 /var/www/html/storage
-chmod -R 775 /var/www/html/bootstrap/cache
 
-# Ensure critical directories are writable
-mkdir -p /var/www/html/storage/app/public
-mkdir -p /var/www/html/storage/framework/cache
-mkdir -p /var/www/html/storage/framework/sessions
-mkdir -p /var/www/html/storage/framework/views
-mkdir -p /var/www/html/storage/logs
-mkdir -p /var/www/html/bootstrap/cache
+# Ensure critical directories have the right permissions
+chmod -R 777 /var/www/html/storage
+chmod -R 777 /var/www/html/bootstrap/cache
 
-# Set proper ownership
+# Create touch files for logs to ensure they exist with proper permissions
+touch /var/www/html/storage/logs/laravel.log
+touch /var/www/html/storage/logs/ff3-cli-$(date +'%Y-%m-%d').log
+chmod 666 /var/www/html/storage/logs/*.log
+
+# Set proper ownership for the entire application
 chown -R nginx:nginx /var/www/html
 
 # Create a file to indicate successful initialization
