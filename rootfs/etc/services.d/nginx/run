@@ -14,5 +14,12 @@ touch /data/nginx/logs/access.log
 chmod 644 /data/nginx/logs/*.log
 chown -R nginx:nginx /data/nginx
 
+# Create symlink to make test.php accessible directly
+if [ -f /var/www/html/public/test.php ]; then
+    bashio::log.info "Setting up test file..."
+    chown nginx:nginx /var/www/html/public/test.php
+    chmod 644 /var/www/html/public/test.php
+fi
+
 bashio::log.info "Starting Nginx..."
 exec nginx -g "daemon off;"

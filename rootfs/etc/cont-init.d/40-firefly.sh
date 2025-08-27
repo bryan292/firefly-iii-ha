@@ -51,7 +51,18 @@ fi
 
 # For Home Assistant integration, we need the proper URLs
 ingress_entry=$(bashio::addon.ingress_entry)
-app_url="http://localhost:8080"
+app_url=""
+
+# Get the Home Assistant API URL
+if bashio::supervisor.ping; then
+    bashio::log.info "Getting Home Assistant URL from Supervisor..."
+    app_url=$(bashio::addon.ingress_url)
+fi
+
+if [[ -z "${app_url}" ]]; then
+    app_url="http://localhost:8080"
+fi
+
 bashio::log.info "Using app URL: ${app_url}"
 bashio::log.info "Ingress entry: ${ingress_entry}"
 
@@ -106,7 +117,7 @@ FORCE_HTTPS=false
 FORCE_SINGLE_USER_MODE=true
 APP_NAME="Firefly III on Home Assistant"
 SITE_OWNER=${admin_email}
-ASSET_URL=${ingress_entry}
+ASSET_URL=
 
 # Logging to file settings
 LOG_CHANNEL=stack
@@ -253,7 +264,19 @@ touch /var/www/html/.initialized
 # Create a PHP test file to verify PHP is working
 cat > /var/www/html/public/test.php << EOT
 <?php
-phpinfo();
+echo "<h1>PHP is working!</h1>";
+echo "<h2>Current Environment Variables:</h2>";
+echo "<pre>";
+print_r($_SERVER);
+echo "</pre>";
+echo "<h2>Request Headers:</h2>";
+echo "<pre>";
+\$headers = getallheaders();
+foreach (\$headers as \$key => \$value) {
+    echo htmlspecialchars(\$key) . ": " . htmlspecialchars(\$value) . "\n";
+}
+echo "</pre>";
+?>
 EOT
 chmod 644 /var/www/html/public/test.php
 
