@@ -29,13 +29,6 @@ db_password=$(bashio::config 'database.password')
 timezone=$(bashio::config 'timezone')
 log_level=$(bashio::config 'log_level')
 
-# If no app URL is provided, use the hassio ingress URL
-if [[ -z "${app_url}" ]]; then
-    app_url=$(bashio::addon.ingress_url)
-    # Ensure the URL doesn't have a trailing slash
-    app_url=${app_url%/}
-fi
-
 # Wait for database to be available
 bashio::log.info "Waiting for database ${db_host}:${db_port} to be available..."
 wait_timeout=30
@@ -56,15 +49,50 @@ else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
 
+# If no app URL is provided, use the hassio ingress URL, but make it fully qualified
+if [[ -z "${app_url}" ]]; then
+    # Get the Home Assistant URL from Supervisor API
+    if bashio::supervisor.ping; then
+        hassio_url=$(bashio::supervisor.info.hostname)
+        if [[ -n "${hassio_url}" && "${hassio_url}" != "null" ]]; then
+            # Determine if we're using SSL
+            if bashio::var.true "$(bashio::supervisor.info.ssl)"; then
+                protocol="https"
+            else
+                protocol="http"
+            fi
+            # Get the ingress path only, not the full URL
+            ingress_path=$(bashio::addon.ingress_entry)
+            # Construct the full URL
+            app_url="${protocol}://${hassio_url}${ingress_path}"
+            bashio::log.info "Using Home Assistant URL: ${app_url}"
+        else
+            # Fallback to just the ingress URL
+            app_url=$(bashio::addon.ingress_url)
+            bashio::log.info "Using Ingress URL: ${app_url}"
+        fi
+    else
+        # Fallback to just the ingress URL
+        app_url=$(bashio::addon.ingress_url)
+        bashio::log.info "Using Ingress URL: ${app_url}"
+    fi
+    # Ensure the URL doesn't have a trailing slash
+    app_url=${app_url%/}
+fi
+
 # Setup environment file
 cat > /var/www/html/.env << EOF
 APP_ENV=production
-APP_DEBUG=false
+APP_DEBUG=true
 APP_KEY=${app_key}
 APP_URL=${app_url}
 APP_LOG_LEVEL=${log_level}
 APP_TIMEZONE=${timezone}
 
+# Used for the trusted proxies package
+TRUSTED_PROXIES=**
+
+# Database settings
 DB_CONNECTION=mysql
 DB_HOST=${db_host}
 DB_PORT=${db_port}
@@ -72,10 +100,12 @@ DB_DATABASE=${db_name}
 DB_USERNAME=${db_user}
 DB_PASSWORD=${db_password}
 
+# Cache, session and queue settings
 CACHE_DRIVER=file
 SESSION_DRIVER=file
 QUEUE_DRIVER=sync
 
+# Mail settings
 MAIL_DRIVER=log
 MAIL_HOST=smtp.mailtrap.io
 MAIL_PORT=2525
@@ -84,13 +114,17 @@ MAIL_USERNAME=null
 MAIL_PASSWORD=null
 MAIL_ENCRYPTION=null
 
-TRUSTED_PROXIES=**
-
+# Home Assistant specific settings
 TZ=${timezone}
-
-# Force Firefly III to use the correct base URL
 FORCE_HTTPS=true
+FORCE_SINGLE_USER_MODE=true
+APP_NAME="Firefly III on Home Assistant"
+SITE_OWNER=${admin_email}
 ASSET_URL=${app_url}
+
+# Additional authentication drivers
+AUTHENTICATION_GUARD=web
+AUTHENTICATION_GUARD_HEADER=REMOTE_USER
 EOF
 
 cd /var/www/html || exit
@@ -108,9 +142,9 @@ fi
 
 # Cache configurations
 bashio::log.info "Setting up Laravel application..."
-php artisan config:clear || true
-php artisan cache:clear || true
-php artisan view:clear || true
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
 
 # Generate storage link
 bashio::log.info "Creating storage link..."
@@ -118,11 +152,11 @@ php artisan storage:link || true
 
 # Run migrations
 bashio::log.info "Running database migrations..."
-php artisan migrate --no-interaction --force || true
+php artisan migrate --no-interaction --force
 
 # Run optimize
 bashio::log.info "Optimizing application..."
-php artisan optimize || true
+php artisan optimize
 
 # Only try to create admin user if admin_email is provided
 if [[ -n "${admin_email}" ]]; then
@@ -174,14 +208,24 @@ fi
 
 # Set permissions
 bashio::log.info "Setting file permissions..."
-chown -R nginx:nginx /var/www/html
-chmod -R 755 /var/www/html/storage
-chmod -R 755 /var/www/html/bootstrap/cache
+find /var/www/html -type d -exec chmod 755 {} \;
+find /var/www/html -type f -exec chmod 644 {} \;
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/bootstrap/cache
 
-# Ensure bootstrap/cache is writable
+# Ensure critical directories are writable
+mkdir -p /var/www/html/storage/app/public
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+mkdir -p /var/www/html/storage/logs
 mkdir -p /var/www/html/bootstrap/cache
-chmod -R 755 /var/www/html/bootstrap/cache
-chown -R nginx:nginx /var/www/html/bootstrap/cache
+
+# Set proper ownership
+chown -R nginx:nginx /var/www/html
 
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
+
+# Show some debug information
+bashio::log.info "Firefly III setup complete. App URL: ${app_url}"

@@ -1,8 +1,11 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
 # Home Assistant Add-on: Firefly III
-# Runs the Nginx service
+# Runs the Nginx daemon
 # ==============================================================================
 
+# Wait until PHP-FPM is running
+bashio::net.wait_for 9000
+
 bashio::log.info "Starting Nginx..."
-exec nginx -g 'daemon off;'
+exec nginx -g "daemon off;"
