@@ -25,7 +25,7 @@ server {
 
     # Laravel pretty URLs
     location / {
-        try_files $uri $uri/ /index.php$is_args$args;
+        try_files $uri $uri/ /index.php?$query_string;
     }
 
     # PHP-FPM configuration
@@ -33,12 +33,17 @@ server {
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        
         # Send appropriate forwarding headers for ingress support
-        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_param HTTP_X_FORWARDED_HOST $http_host;
         fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
         fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
         fastcgi_param HTTP_X_FORWARDED_FOR $proxy_add_x_forwarded_for;
+        
+        # Include standard FastCGI parameters
         include fastcgi_params;
+        
+        # Set longer timeouts for Firefly III operations
         fastcgi_intercept_errors off;
         fastcgi_buffer_size 16k;
         fastcgi_buffers 4 16k;
@@ -60,4 +65,10 @@ server {
     location ~ /\.(?!well-known) {
         deny all;
     }
+    
+    # Additional security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
 }

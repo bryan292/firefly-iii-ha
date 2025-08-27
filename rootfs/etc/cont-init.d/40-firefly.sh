@@ -49,16 +49,19 @@ else
 fi
 
 # Get the Home Assistant URL using the supervisor API
-app_url=$(bashio::addon.ingress_url)
-bashio::log.info "Using Ingress URL: ${app_url}"
+# Note: For Firefly, we need a full URL with http/https protocol
+ingress_path=$(bashio::addon.ingress_entry)
+# For ingress to work properly, we need to use the full URL that Home Assistant would use
+app_url="https://$(hostname -f)${ingress_path}"
+bashio::log.info "Using full URL for APP_URL: ${app_url}"
+# Also save the ingress entry for asset URLs
+asset_url="${ingress_path}"
 
-# Ensure the URL doesn't have a trailing slash
-app_url=${app_url%/}
-
-# Create log directory with proper permissions
+# Create log directory with proper permissions first
 mkdir -p /var/www/html/storage/logs
 chmod -R 777 /var/www/html/storage/logs
-chown -R nginx:nginx /var/www/html/storage/logs
+touch /var/www/html/storage/logs/laravel.log
+chmod 666 /var/www/html/storage/logs/laravel.log
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
@@ -100,13 +103,29 @@ FORCE_HTTPS=true
 FORCE_SINGLE_USER_MODE=true
 APP_NAME="Firefly III on Home Assistant"
 SITE_OWNER=${admin_email}
-ASSET_URL=${app_url}
+ASSET_URL=${asset_url}
 
 # Logging to file settings
 LOG_CHANNEL=stack
 LOG_LEVEL=debug
 
-# Additional authentication drivers
+# Additional settings for Firefly III
+FIREFLY_III_LAYOUT=v2
+EXPECT_SECURE_URL=false
+DB_USE_UTF8MB4=true
+ADLDAP_CONNECTION=default
+TRACKER_SITE_ID=1
+DISABLE_FRAME_HEADER=false
+CACHE_PREFIX=firefly
+SEND_REGISTRATION_MAIL=false
+SEND_ERROR_MESSAGE=true
+ENABLE_EXTERNAL_MAP=false
+MAPBOX_API_KEY=
+MAP_DEFAULT_LAT=51.983333
+MAP_DEFAULT_LONG=5.916667
+MAP_DEFAULT_ZOOM=6
+
+# Authentication settings
 AUTHENTICATION_GUARD=web
 AUTHENTICATION_GUARD_HEADER=REMOTE_USER
 EOF
