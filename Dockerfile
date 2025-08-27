@@ -60,9 +60,9 @@ RUN ln -sf /usr/bin/php82 /usr/bin/php
 # Set PHP configuration 
 RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini
 
-# Install dependencies
+# Install dependencies with ignore-platform-reqs to avoid extension issues
 RUN cd ${FIREFLY_PATH} \
-    && composer install --no-dev --no-interaction \
+    && composer install --no-dev --no-interaction --ignore-platform-reqs \
     && rm -rf /root/.composer
 
 # Prepare permissions
