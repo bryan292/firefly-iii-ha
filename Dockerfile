@@ -44,7 +44,8 @@ RUN apk add --no-cache \
     curl \
     supervisor \
     composer \
-    netcat-openbsd
+    netcat-openbsd \
+    mysql-client
 
 # Create directory structure
 RUN mkdir -p ${FIREFLY_PATH}
@@ -96,6 +97,10 @@ RUN chown -R nginx:nginx ${FIREFLY_PATH} \
 
 # Copy root filesystem
 COPY rootfs /
+
+# Set execute permissions on all scripts
+RUN chmod -R a+x /etc/cont-init.d && \
+    chmod -R a+x /etc/services.d
 
 # Configure nginx
 RUN rm -f /etc/nginx/http.d/default.conf
