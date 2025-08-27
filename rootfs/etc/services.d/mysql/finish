@@ -1,3 +1,0 @@
-#!/usr/bin/with-contenv bashio
-bashio::log.info "MySQL stopped, restarting..."
-sleep 1
