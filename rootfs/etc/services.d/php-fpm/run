@@ -1,0 +1,8 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Home Assistant Add-on: Firefly III
+# Runs the PHP-FPM service
+# ==============================================================================
+
+bashio::log.info "Starting PHP-FPM..."
+exec php-fpm82 -F

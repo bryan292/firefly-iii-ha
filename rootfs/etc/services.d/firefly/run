@@ -1,0 +1,10 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Home Assistant Add-on: Firefly III
+# Runs the Firefly III queue worker
+# ==============================================================================
+
+cd /var/www/html || exit
+
+bashio::log.info "Starting Firefly III queue worker..."
+exec php artisan queue:work --sleep=3 --tries=3
