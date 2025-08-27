@@ -1,0 +1,50 @@
+---
+name: Release
+
+# Run on every commit to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: 🔢 Get version from config.yaml
+        id: version
+        run: |
+          version=$(grep "version:" config.yaml | sed 's/.*version: *"\(.*\)".*/\1/')
+          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "Version found: $version"
+
+      - name: 📅 Get current date
+        id: date
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: 🏷️ Create tag
+        id: tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          tag_name="v${{ env.VERSION }}-${{ env.DATE }}-$(git rev-parse --short HEAD)"
+          echo "TAG=$tag_name" >> $GITHUB_ENV
+          git tag $tag_name
+          git push origin $tag_name
+
+      - name: 📦 Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Release ${{ env.VERSION }} - ${{ env.DATE }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
