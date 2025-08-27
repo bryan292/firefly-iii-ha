@@ -1,6 +1,6 @@
 name: "Firefly III"
 description: "Firefly III: A free and open source personal finance manager"
-version: "1.0.4"
+version: "1.0.5"
 slug: "firefly_iii"
 init: false
 arch:
