@@ -46,8 +46,8 @@ while ! nc -z "${db_host}" "${db_port}" > /dev/null 2>&1; do
     sleep 1
 done
 
-# Generate a valid Laravel app key (32 bytes base64 encoded)
-app_key="base64:$(openssl rand -base64 32)"
+# Generate a valid Laravel app key (32 bytes base64 encoded) without using openssl
+app_key="base64:$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n')"
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
