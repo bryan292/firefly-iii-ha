@@ -32,6 +32,8 @@ log_level=$(bashio::config 'log_level')
 # If no app URL is provided, use the hassio ingress URL
 if [[ -z "${app_url}" ]]; then
     app_url=$(bashio::addon.ingress_url)
+    # Ensure the URL doesn't have a trailing slash
+    app_url=${app_url%/}
 fi
 
 # Wait for database to be available
@@ -47,7 +49,12 @@ while ! nc -z "${db_host}" "${db_port}" > /dev/null 2>&1; do
 done
 
 # Generate a valid Laravel app key (32 bytes base64 encoded) without using openssl
-app_key="base64:$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n')"
+if [ ! -f /data/firefly-iii/app_key ]; then
+    app_key="base64:$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n')"
+    echo "${app_key}" > /data/firefly-iii/app_key
+else
+    app_key=$(cat /data/firefly-iii/app_key)
+fi
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
@@ -80,6 +87,10 @@ MAIL_ENCRYPTION=null
 TRUSTED_PROXIES=**
 
 TZ=${timezone}
+
+# Force Firefly III to use the correct base URL
+FORCE_HTTPS=true
+ASSET_URL=${app_url}
 EOF
 
 cd /var/www/html || exit
@@ -102,11 +113,16 @@ php artisan cache:clear || true
 php artisan view:clear || true
 
 # Generate storage link
+bashio::log.info "Creating storage link..."
 php artisan storage:link || true
 
 # Run migrations
 bashio::log.info "Running database migrations..."
 php artisan migrate --no-interaction --force || true
+
+# Run optimize
+bashio::log.info "Optimizing application..."
+php artisan optimize || true
 
 # Only try to create admin user if admin_email is provided
 if [[ -n "${admin_email}" ]]; then
@@ -157,5 +173,15 @@ else
 fi
 
 # Set permissions
+bashio::log.info "Setting file permissions..."
 chown -R nginx:nginx /var/www/html
 chmod -R 755 /var/www/html/storage
+chmod -R 755 /var/www/html/bootstrap/cache
+
+# Ensure bootstrap/cache is writable
+mkdir -p /var/www/html/bootstrap/cache
+chmod -R 755 /var/www/html/bootstrap/cache
+chown -R nginx:nginx /var/www/html/bootstrap/cache
+
+# Create a file to indicate successful initialization
+touch /var/www/html/.initialized

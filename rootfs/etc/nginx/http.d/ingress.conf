@@ -7,6 +7,11 @@ server {
 
     client_max_body_size 100M;
 
+    # Add proper headers for ingress
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Robots-Tag none;
+
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
@@ -15,11 +20,15 @@ server {
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
+        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
         include fastcgi_params;
     }
 
     location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
         expires max;
         log_not_found off;
+        add_header Cache-Control "public, max-age=31536000";
     }
 }
