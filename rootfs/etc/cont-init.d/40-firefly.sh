@@ -17,6 +17,7 @@ declare app_url
 
 # Make sure persistent data directory exists
 mkdir -p /data/firefly-iii
+mkdir -p /data/nginx/logs
 
 # Get config
 admin_email=$(bashio::config 'admin_email')
@@ -48,14 +49,13 @@ else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
 
-# Get the Home Assistant URL using the supervisor API
-# For Home Assistant ingress, we will use a relative URL
+# Get the ingress URL - this is needed for assets to load correctly
 ingress_entry=$(bashio::addon.ingress_entry)
 app_url="http://localhost:8080"
 bashio::log.info "Using app URL: ${app_url}"
-asset_url=""
+bashio::log.info "Ingress entry: ${ingress_entry}"
 
-# Create log directory with proper permissions first
+# Create needed directories with proper permissions
 mkdir -p /var/www/html/storage/logs
 chmod -R 777 /var/www/html/storage/logs
 touch /var/www/html/storage/logs/laravel.log
@@ -63,7 +63,7 @@ chmod 666 /var/www/html/storage/logs/laravel.log
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
-APP_ENV=production
+APP_ENV=local
 APP_DEBUG=true
 APP_KEY=${app_key}
 APP_URL=${app_url}
@@ -101,7 +101,7 @@ FORCE_HTTPS=false
 FORCE_SINGLE_USER_MODE=true
 APP_NAME="Firefly III on Home Assistant"
 SITE_OWNER=${admin_email}
-ASSET_URL=${asset_url}
+ASSET_URL=${ingress_entry}
 
 # Logging to file settings
 LOG_CHANNEL=stack
@@ -187,11 +187,7 @@ if [[ -n "${admin_email}" ]]; then
         if php artisan list | grep -q "firefly-iii:create-first-user"; then
             # Use the official command if available
             bashio::log.info "Using built-in command to create first user..."
-            # Temporarily set environment to local for user creation
-            sed -i 's/APP_ENV=production/APP_ENV=local/g' /var/www/html/.env
             php artisan firefly-iii:create-first-user "${admin_email}" --no-interaction || true
-            # Reset environment to production
-            sed -i 's/APP_ENV=local/APP_ENV=production/g' /var/www/html/.env
         else
             # Manual user creation as fallback
             bashio::log.info "Using manual method to create first user..."
@@ -236,6 +232,13 @@ touch /var/www/html/storage/logs/laravel.log
 touch /var/www/html/storage/logs/ff3-cli-$(date +'%Y-%m-%d').log
 chmod 666 /var/www/html/storage/logs/*.log
 
+# Set up Nginx logs
+mkdir -p /data/nginx/logs
+touch /data/nginx/logs/error.log
+touch /data/nginx/logs/access.log
+chmod 644 /data/nginx/logs/*.log
+chown -R nginx:nginx /data/nginx
+
 # Set proper ownership for the entire application
 chown -R nginx:nginx /var/www/html
 
@@ -243,11 +246,27 @@ chown -R nginx:nginx /var/www/html
 touch /var/www/html/.initialized
 
 # Create a simple test page to help debug ingress issues
+cat > /var/www/html/public/index.html << EOT
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firefly III Test Page</title>
+</head>
+<body>
+    <h1>Firefly III Test Page</h1>
+    <p>If you can see this page, the web server is working but the Firefly III application might have issues.</p>
+    <p><a href="test.php">View PHP Info</a></p>
+</body>
+</html>
+EOT
+
 cat > /var/www/html/public/test.php << EOT
 <?php
 phpinfo();
 EOT
+
 chmod 644 /var/www/html/public/test.php
+chmod 644 /var/www/html/public/index.html
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"

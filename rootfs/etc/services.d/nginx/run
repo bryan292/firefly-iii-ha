@@ -7,5 +7,12 @@
 # Wait until PHP-FPM is running
 bashio::net.wait_for 9000
 
+# Make sure Nginx can access the logs directory
+mkdir -p /data/nginx/logs
+touch /data/nginx/logs/error.log
+touch /data/nginx/logs/access.log
+chmod 644 /data/nginx/logs/*.log
+chown -R nginx:nginx /data/nginx
+
 bashio::log.info "Starting Nginx..."
 exec nginx -g "daemon off;"
