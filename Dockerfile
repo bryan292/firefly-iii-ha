@@ -7,6 +7,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Set environment variables
 ENV FIREFLY_PATH=/var/www/html
+ENV FIREFLY_III_VERSION=6.0.30
 
 # Install required packages
 RUN apk update && \
@@ -52,10 +53,10 @@ RUN apk update && \
 # Create directory structure
 RUN mkdir -p ${FIREFLY_PATH}
 
-# Clone the latest release of Firefly III from the repository
-RUN git clone --depth 1 --branch $(curl -s https://api.github.com/repos/firefly-iii/firefly-iii/releases/latest | jq -r '.tag_name') https://github.com/firefly-iii/firefly-iii.git /tmp/firefly-iii && \
-    cp -r /tmp/firefly-iii/* ${FIREFLY_PATH}/ && \
-    rm -rf /tmp/firefly-iii
+# Download and install a specific version of Firefly III
+RUN curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_VERSION}.tar.gz | tar xzf - -C /tmp/ && \
+    cp -r /tmp/firefly-iii-${FIREFLY_III_VERSION}/* ${FIREFLY_PATH}/ && \
+    rm -rf /tmp/firefly-iii-${FIREFLY_III_VERSION}
 
 # Make sure the correct PHP version is used for composer
 RUN ln -sf /usr/bin/php82 /usr/bin/php
@@ -65,7 +66,7 @@ RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini
 
 # Install dependencies with ignore-platform-reqs to avoid extension issues
 RUN cd ${FIREFLY_PATH} && \
-    composer install --no-dev --no-interaction --no-scripts && \
+    composer install --no-dev --no-interaction --no-scripts --ignore-platform-req=php --ignore-platform-req=ext-bcmath --ignore-platform-req=ext-fileinfo --ignore-platform-req=ext-intl --ignore-platform-req=ext-pdo --ignore-platform-req=ext-session --ignore-platform-req=ext-simplexml --ignore-platform-req=ext-sodium --ignore-platform-req=ext-tokenizer --ignore-platform-req=ext-xml --ignore-platform-req=ext-xmlwriter --ignore-platform-req=ext-dom && \
     composer dump-autoload --optimize && \
     rm -rf /root/.composer
 
