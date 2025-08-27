@@ -48,31 +48,10 @@ else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
 
-# Get the Home Assistant URL from Supervisor API
-if bashio::supervisor.ping; then
-    hassio_url=$(bashio::supervisor.info.hostname)
-    if [[ -n "${hassio_url}" && "${hassio_url}" != "null" ]]; then
-        # Determine if we're using SSL
-        if bashio::var.true "$(bashio::supervisor.info.ssl)"; then
-            protocol="https"
-        else
-            protocol="http"
-        fi
-        # Get the ingress path only, not the full URL
-        ingress_path=$(bashio::addon.ingress_entry)
-        # Construct the full URL
-        app_url="${protocol}://${hassio_url}${ingress_path}"
-        bashio::log.info "Using Home Assistant URL: ${app_url}"
-    else
-        # Fallback to just the ingress URL
-        app_url=$(bashio::addon.ingress_url)
-        bashio::log.info "Using Ingress URL: ${app_url}"
-    fi
-else
-    # Fallback to just the ingress URL
-    app_url=$(bashio::addon.ingress_url)
-    bashio::log.info "Using Ingress URL: ${app_url}"
-fi
+# Get the Home Assistant URL using the supervisor API
+app_url=$(bashio::addon.ingress_url)
+bashio::log.info "Using Ingress URL: ${app_url}"
+
 # Ensure the URL doesn't have a trailing slash
 app_url=${app_url%/}
 
