@@ -27,9 +27,27 @@ server {
     gzip_proxied expired no-cache no-store private no_last_modified no_etag auth;
     gzip_types application/atom+xml application/javascript application/json application/ld+json application/manifest+json application/rss+xml application/vnd.geo+json application/vnd.ms-fontobject application/x-font-ttf application/x-web-app-manifest+json application/xhtml+xml application/xml font/opentype image/bmp image/svg+xml image/x-icon text/cache-manifest text/css text/plain text/vcard text/vnd.rim.location.xloc text/vtt text/x-component text/x-cross-domain-policy;
 
-    # Laravel pretty URLs
+    # Laravel pretty URLs with fallback
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files $uri $uri/ /index.php$is_args$args;
+        
+        # Add support for Home Assistant's ingress
+        add_header Access-Control-Allow-Origin *;
+    }
+
+    # Specific handling for index.php
+    location = /index.php {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTP_X_FORWARDED_HOST $http_host;
+        fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
+        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
+        
+        # Set longer timeouts for Firefly III operations
+        fastcgi_connect_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
     }
 
     # PHP-FPM configuration
@@ -45,8 +63,8 @@ server {
         
         # Home Assistant ingress requires these headers
         fastcgi_param HTTP_X_INGRESS 1;
-        fastcgi_param HTTP_X_INGRESS_PATH $http_x_ingress_path;
         fastcgi_param HTTP_X_FORWARDED_HOST $http_host;
+        fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
         fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
         
         # Set longer timeouts for Firefly III operations

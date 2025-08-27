@@ -49,11 +49,16 @@ else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
 
-# Get the ingress URL - this is needed for assets to load correctly
+# For Home Assistant integration, we need the proper URLs
 ingress_entry=$(bashio::addon.ingress_entry)
 app_url="http://localhost:8080"
 bashio::log.info "Using app URL: ${app_url}"
 bashio::log.info "Ingress entry: ${ingress_entry}"
+
+# Remove index.html if exists (it would take precedence over index.php)
+if [ -f /var/www/html/public/index.html ]; then
+    rm -f /var/www/html/public/index.html
+fi
 
 # Create needed directories with proper permissions
 mkdir -p /var/www/html/storage/logs
@@ -245,28 +250,12 @@ chown -R nginx:nginx /var/www/html
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
 
-# Create a simple test page to help debug ingress issues
-cat > /var/www/html/public/index.html << EOT
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Firefly III Test Page</title>
-</head>
-<body>
-    <h1>Firefly III Test Page</h1>
-    <p>If you can see this page, the web server is working but the Firefly III application might have issues.</p>
-    <p><a href="test.php">View PHP Info</a></p>
-</body>
-</html>
-EOT
-
+# Create a PHP test file to verify PHP is working
 cat > /var/www/html/public/test.php << EOT
 <?php
 phpinfo();
 EOT
-
 chmod 644 /var/www/html/public/test.php
-chmod 644 /var/www/html/public/index.html
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"
