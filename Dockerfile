@@ -45,7 +45,8 @@ RUN apk add --no-cache \
     supervisor \
     composer \
     netcat-openbsd \
-    mysql-client
+    mysql-client \
+    openssl
 
 # Create directory structure
 RUN mkdir -p ${FIREFLY_PATH}
@@ -59,37 +60,24 @@ RUN curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_V
 RUN ln -sf /usr/bin/php82 /usr/bin/php
 
 # Set PHP configuration 
-RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini && \
-    # Enable all the extensions we need
-    echo "extension=bcmath.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=pdo.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=pdo_mysql.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=mysqli.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=intl.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=fileinfo.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=sodium.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=dom.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=xml.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=simplexml.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=tokenizer.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=session.so" >> /etc/php82/conf.d/99-firefly.ini && \
-    echo "extension=xmlwriter.so" >> /etc/php82/conf.d/99-firefly.ini
-
-# Create a basic composer.json to avoid the post-install script
-RUN cd ${FIREFLY_PATH} && rm -f composer.json && echo '{"scripts": {}}' > composer.json
+RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini
 
 # Install dependencies with ignore-platform-reqs to avoid extension issues
-# Completely skip the post-install scripts
 RUN cd ${FIREFLY_PATH} && \
-    cp -f composer.json composer.json.bak && \
-    composer install --no-dev --no-interaction --ignore-platform-reqs --no-scripts --no-autoloader && \
-    mv -f composer.json.bak composer.json && \
+    composer install --no-dev --no-interaction --no-scripts && \
     composer dump-autoload --optimize && \
     rm -rf /root/.composer
 
 # Fix bootstrap/app.php to handle missing bcscale
 RUN cd ${FIREFLY_PATH} && \
     sed -i '35s/bcscale(12)/function_exists("bcscale") ? bcscale(12) : null/' bootstrap/app.php
+
+# Create required directories
+RUN mkdir -p ${FIREFLY_PATH}/storage/upload && \
+    mkdir -p ${FIREFLY_PATH}/storage/framework/cache && \
+    mkdir -p ${FIREFLY_PATH}/storage/framework/sessions && \
+    mkdir -p ${FIREFLY_PATH}/storage/framework/views && \
+    mkdir -p ${FIREFLY_PATH}/storage/logs
 
 # Prepare permissions
 RUN chown -R nginx:nginx ${FIREFLY_PATH} \

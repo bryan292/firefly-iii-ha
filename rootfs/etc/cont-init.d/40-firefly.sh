@@ -17,13 +17,6 @@ declare wait_timeout
 # Make sure persistent data directory exists
 mkdir -p /data/firefly-iii
 
-# Make directory structure for Firefly III
-mkdir -p /var/www/html/storage/upload
-mkdir -p /var/www/html/storage/framework/cache
-mkdir -p /var/www/html/storage/framework/sessions
-mkdir -p /var/www/html/storage/framework/views
-mkdir -p /var/www/html/storage/logs
-
 # Get config
 admin_email=$(bashio::config 'admin_email')
 app_url=$(bashio::config 'app_url')
@@ -56,7 +49,7 @@ done
 cat > /var/www/html/.env << EOF
 APP_ENV=production
 APP_DEBUG=false
-APP_KEY=
+APP_KEY=base64:$(openssl rand -base64 32)
 APP_URL=${app_url}
 APP_LOG_LEVEL=${log_level}
 APP_TIMEZONE=${timezone}
@@ -87,38 +80,23 @@ EOF
 
 cd /var/www/html || exit
 
-# Backup the key file in case one exists
-if [[ -f ".env" ]] && grep -q "APP_KEY=" .env && ! grep -q "APP_KEY=$" .env; then
-    APP_KEY=$(grep "APP_KEY=" .env | cut -d'=' -f2)
-    bashio::log.info "Found existing APP_KEY: ${APP_KEY}"
-fi
-
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."
-mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
+mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || bashio::log.warning "Failed to create database, it might already exist"
 
-# Generate app key if not already set
-if grep -q "APP_KEY=$" .env; then
-    bashio::log.info "Generating app key..."
-    php artisan key:generate --no-interaction || true
-    
-    # If key generation failed, set a default key
-    if grep -q "APP_KEY=$" .env; then
-        bashio::log.warning "Artisan key:generate failed, setting default key"
-        sed -i "s/APP_KEY=/APP_KEY=base64:$(openssl rand -base64 32)/" .env
-    fi
-fi
+# Cache configurations
+bashio::log.info "Setting up Laravel application..."
+php artisan config:cache || true
+php artisan route:cache || true
+php artisan view:cache || true
 
-# Try to run migrations
+# Run migrations
 bashio::log.info "Running database migrations..."
 php artisan migrate --no-interaction --force || true
 
 # Try to create admin user if it doesn't exist
 bashio::log.info "Ensuring admin user exists..."
-if ! php artisan firefly-iii:user:list 2>/dev/null | grep -q "${admin_email}"; then
-    bashio::log.info "Creating admin user ${admin_email}..."
-    php artisan firefly-iii:create-admin "${admin_email}" --no-interaction || true
-fi
+php artisan firefly-iii:create-admin "${admin_email}" --no-interaction || true
 
 # Set permissions
 chown -R nginx:nginx /var/www/html

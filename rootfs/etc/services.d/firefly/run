@@ -6,5 +6,11 @@
 
 cd /var/www/html || exit
 
-bashio::log.info "Starting Firefly III queue worker..."
-exec php artisan queue:work --sleep=3 --tries=3
+# If queue:work fails, we'll just sleep indefinitely instead of crashing
+if php artisan queue:work --sleep=3 --tries=3; then
+  bashio::log.info "Queue worker started successfully"
+else
+  bashio::log.warning "Queue worker failed to start, entering sleep mode"
+  # Just sleep indefinitely instead of crashing
+  exec tail -f /dev/null
+fi
