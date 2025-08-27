@@ -110,7 +110,28 @@ php artisan migrate --no-interaction --force || true
 
 # Try to create admin user if it doesn't exist
 bashio::log.info "Ensuring admin user exists..."
-php artisan firefly-iii:create-first-user "${admin_email}" --no-interaction || true
+
+# Check if any users exist in the database
+USERS_COUNT=$(mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -s -N -e "SELECT COUNT(*) FROM ${db_name}.users;" 2>/dev/null || echo "0")
+
+if [ "$USERS_COUNT" = "0" ]; then
+    # Create a user directly in the database if no users exist
+    bashio::log.info "No users found. Creating admin user..."
+    USER_ID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    CURRENT_DATE=$(date +"%Y-%m-%d %H:%M:%S")
+    PASSWORD_HASH=$(php -r "echo password_hash('welcome', PASSWORD_BCRYPT);")
+    
+    mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" "${db_name}" -e "
+        INSERT INTO users (id, email, password, role, blocked, blocked_code, created_at, updated_at, remember_token) 
+        VALUES ('${USER_ID}', '${admin_email}', '${PASSWORD_HASH}', 'owner', 0, null, '${CURRENT_DATE}', '${CURRENT_DATE}', null);
+    " || bashio::log.warning "Failed to create admin user. You may need to create one manually."
+    
+    if [ $? -eq 0 ]; then
+        bashio::log.info "Admin user created successfully. Login with email: ${admin_email} and password: welcome"
+    fi
+else
+    bashio::log.info "Users already exist in database, skipping user creation."
+fi
 
 # Set permissions
 chown -R nginx:nginx /var/www/html
