@@ -1,7 +1,7 @@
 ---
 name: Release
 
-# Run on every commit to the main branch
+# Run on every commit to the main branch 
 on:
   push:
     branches:
