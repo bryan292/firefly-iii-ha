@@ -66,8 +66,9 @@ RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini
 
 # Install dependencies with ignore-platform-reqs to avoid extension issues
 RUN cd ${FIREFLY_PATH} && \
-    composer install --no-dev --no-interaction --no-scripts --ignore-platform-req=php --ignore-platform-req=ext-bcmath --ignore-platform-req=ext-fileinfo --ignore-platform-req=ext-intl --ignore-platform-req=ext-pdo --ignore-platform-req=ext-session --ignore-platform-req=ext-simplexml --ignore-platform-req=ext-sodium --ignore-platform-req=ext-tokenizer --ignore-platform-req=ext-xml --ignore-platform-req=ext-xmlwriter --ignore-platform-req=ext-dom && \
-    composer dump-autoload --optimize && \
+    IGNORE_FLAGS="--ignore-platform-req=php --ignore-platform-req=ext-bcmath --ignore-platform-req=ext-fileinfo --ignore-platform-req=ext-intl --ignore-platform-req=ext-pdo --ignore-platform-req=ext-session --ignore-platform-req=ext-simplexml --ignore-platform-req=ext-sodium --ignore-platform-req=ext-tokenizer --ignore-platform-req=ext-xml --ignore-platform-req=ext-xmlwriter --ignore-platform-req=ext-dom" && \
+    composer install --no-dev --no-interaction --no-scripts $IGNORE_FLAGS && \
+    composer dump-autoload --optimize $IGNORE_FLAGS && \
     rm -rf /root/.composer
 
 # Fix bootstrap/app.php to handle missing bcscale
