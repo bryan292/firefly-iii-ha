@@ -9,45 +9,45 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV FIREFLY_PATH=/var/www/html
 
 # Install required packages
-RUN apk add --no-cache \
-    php82 \
-    php82-fpm \
-    php82-pdo \
-    php82-pdo_mysql \
-    php82-mysqli \
-    php82-json \
-    php82-openssl \
-    php82-curl \
-    php82-zlib \
-    php82-xml \
-    php82-phar \
-    php82-intl \
-    php82-dom \
-    php82-xmlreader \
-    php82-ctype \
-    php82-session \
-    php82-mbstring \
-    php82-gmp \
-    php82-simplexml \
-    php82-tokenizer \
-    php82-fileinfo \
-    php82-iconv \
-    php82-zip \
-    php82-bcmath \
-    php82-sodium \
-    php82-gd \
-    php82-pcntl \
-    php82-posix \
-    php82-xmlwriter \
-    nginx \
-    curl \
-    supervisor \
-    composer \
-    netcat-openbsd \
-    mysql-client \
-    openssl \
-    jq \
-    git
+RUN apk update && \
+    apk add --no-cache \
+        php82 \
+        php82-fpm \
+        php82-pdo \
+        php82-pdo_mysql \
+        php82-mysqli \
+        php82-json \
+        php82-openssl \
+        php82-curl \
+        php82-zlib \
+        php82-xml \
+        php82-phar \
+        php82-intl \
+        php82-dom \
+        php82-xmlreader \
+        php82-ctype \
+        php82-session \
+        php82-mbstring \
+        php82-gmp \
+        php82-simplexml \
+        php82-tokenizer \
+        php82-fileinfo \
+        php82-iconv \
+        php82-zip \
+        php82-bcmath \
+        php82-sodium \
+        php82-gd \
+        php82-pcntl \
+        php82-posix \
+        php82-xmlwriter \
+        nginx \
+        curl \
+        supervisor \
+        composer \
+        netcat-openbsd \
+        mysql-client \
+        jq \
+        git
 
 # Create directory structure
 RUN mkdir -p ${FIREFLY_PATH}
