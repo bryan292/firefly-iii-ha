@@ -49,13 +49,11 @@ else
 fi
 
 # Get the Home Assistant URL using the supervisor API
-# Note: For Firefly, we need a full URL with http/https protocol
-ingress_path=$(bashio::addon.ingress_entry)
-# For ingress to work properly, we need to use the full URL that Home Assistant would use
-app_url="https://$(hostname -f)${ingress_path}"
-bashio::log.info "Using full URL for APP_URL: ${app_url}"
-# Also save the ingress entry for asset URLs
-asset_url="${ingress_path}"
+# For Home Assistant ingress, we will use a relative URL
+ingress_entry=$(bashio::addon.ingress_entry)
+app_url="http://localhost:8080"
+bashio::log.info "Using app URL: ${app_url}"
+asset_url=""
 
 # Create log directory with proper permissions first
 mkdir -p /var/www/html/storage/logs
@@ -99,7 +97,7 @@ MAIL_ENCRYPTION=null
 
 # Home Assistant specific settings
 TZ=${timezone}
-FORCE_HTTPS=true
+FORCE_HTTPS=false
 FORCE_SINGLE_USER_MODE=true
 APP_NAME="Firefly III on Home Assistant"
 SITE_OWNER=${admin_email}
@@ -115,7 +113,7 @@ EXPECT_SECURE_URL=false
 DB_USE_UTF8MB4=true
 ADLDAP_CONNECTION=default
 TRACKER_SITE_ID=1
-DISABLE_FRAME_HEADER=false
+DISABLE_FRAME_HEADER=true
 CACHE_PREFIX=firefly
 SEND_REGISTRATION_MAIL=false
 SEND_ERROR_MESSAGE=true
@@ -243,6 +241,13 @@ chown -R nginx:nginx /var/www/html
 
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
+
+# Create a simple test page to help debug ingress issues
+cat > /var/www/html/public/test.php << EOT
+<?php
+phpinfo();
+EOT
+chmod 644 /var/www/html/public/test.php
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"
