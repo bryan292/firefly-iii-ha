@@ -86,7 +86,14 @@ cd /var/www/html || exit
 
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."
-mariadb-client -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || bashio::log.warning "Failed to create database, it might already exist"
+# Try using mysql client instead of mariadb-client which seems to be missing
+if command -v mysql >/dev/null 2>&1; then
+    mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || bashio::log.warning "Failed to create database, it might already exist"
+elif command -v mariadb >/dev/null 2>&1; then
+    mariadb -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || bashio::log.warning "Failed to create database, it might already exist"
+else
+    bashio::log.warning "No MySQL/MariaDB client found, skipping database creation"
+fi
 
 # Cache configurations
 bashio::log.info "Setting up Laravel application..."
