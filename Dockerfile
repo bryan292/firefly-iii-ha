@@ -6,7 +6,6 @@ FROM ${BUILD_FROM}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Set environment variables
-ENV FIREFLY_III_VERSION=6.0.27
 ENV FIREFLY_PATH=/var/www/html
 
 # Install required packages
@@ -46,15 +45,17 @@ RUN apk add --no-cache \
     composer \
     netcat-openbsd \
     mysql-client \
-    openssl
+    openssl \
+    jq \
+    git
 
 # Create directory structure
 RUN mkdir -p ${FIREFLY_PATH}
 
-# Download and install Firefly III
-RUN curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_VERSION}.tar.gz | tar xzf - -C /tmp/ \
-    && cp -r /tmp/firefly-iii-${FIREFLY_III_VERSION}/* ${FIREFLY_PATH}/ \
-    && rm -rf /tmp/firefly-iii-${FIREFLY_III_VERSION}
+# Clone the latest release of Firefly III from the repository
+RUN git clone --depth 1 --branch $(curl -s https://api.github.com/repos/firefly-iii/firefly-iii/releases/latest | jq -r '.tag_name') https://github.com/firefly-iii/firefly-iii.git /tmp/firefly-iii && \
+    cp -r /tmp/firefly-iii/* ${FIREFLY_PATH}/ && \
+    rm -rf /tmp/firefly-iii
 
 # Make sure the correct PHP version is used for composer
 RUN ln -sf /usr/bin/php82 /usr/bin/php
@@ -70,7 +71,7 @@ RUN cd ${FIREFLY_PATH} && \
 
 # Fix bootstrap/app.php to handle missing bcscale
 RUN cd ${FIREFLY_PATH} && \
-    sed -i '35s/bcscale(12)/function_exists("bcscale") ? bcscale(12) : null/' bootstrap/app.php
+    sed -i '35s/bcscale(12)/function_exists("bcscale") ? bcscale(12) : null/' bootstrap/app.php || true
 
 # Create required directories
 RUN mkdir -p ${FIREFLY_PATH}/storage/upload && \

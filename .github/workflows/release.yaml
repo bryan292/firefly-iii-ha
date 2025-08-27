@@ -35,7 +35,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          tag_name="v${{ env.VERSION }}-${{ env.DATE }}-$(git rev-parse --short HEAD)"
+          tag_name="v${{ env.VERSION }}"
           echo "TAG=$tag_name" >> $GITHUB_ENV
           git tag $tag_name
           git push origin $tag_name
@@ -44,7 +44,27 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.TAG }}
-          name: Release ${{ env.VERSION }} - ${{ env.DATE }}
+          name: Release ${{ env.VERSION }}
           draft: false
           prerelease: false
           generate_release_notes: true
+          
+      - name: 🔄 Bump version in config.yaml
+        run: |
+          # Get the current version
+          current_version=$(grep "version:" config.yaml | sed 's/.*version: *"\(.*\)".*/\1/')
+          
+          # Split version into parts
+          IFS='.' read -r major minor patch <<< "$current_version"
+          
+          # Increment patch version
+          new_patch=$((patch + 1))
+          new_version="$major.$minor.$new_patch"
+          
+          # Update config.yaml with new version
+          sed -i "s/version: \"$current_version\"/version: \"$new_version\"/" config.yaml
+          
+          # Commit and push the updated config.yaml
+          git add config.yaml
+          git commit -m "Bump version to $new_version [skip ci]"
+          git push

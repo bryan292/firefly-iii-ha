@@ -7,5 +7,3 @@ build_from:
 codenotary:
   signer: notary@example.com
   base_image: notary@example.com
-args:
-  FIREFLY_III_VERSION: 6.0.27

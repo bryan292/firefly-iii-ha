@@ -69,6 +69,13 @@ The email address of the admin user.
 
 The log level for Firefly III.
 
+## Features
+
+- Automatically installs the latest version of Firefly III
+- Integrates with the MariaDB add-on for data storage
+- Easy configuration through the Home Assistant UI
+- Secure access through Home Assistant authentication
+
 ## Support
 
 Got questions?

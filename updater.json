@@ -1,0 +1,11 @@
+{
+  "addonlist": [
+    {
+      "name": "Firefly III",
+      "slug": "firefly_iii",
+      "description": "Firefly III: A free and open source personal finance manager",
+      "repository": "bryan292/firefly-iii-ha",
+      "latest_version": "1.0.0"
+    }
+  ]
+}
