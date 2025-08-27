@@ -111,26 +111,44 @@ php artisan migrate --no-interaction --force || true
 # Try to create admin user if it doesn't exist
 bashio::log.info "Ensuring admin user exists..."
 
-# Check if any users exist in the database
-USERS_COUNT=$(mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -s -N -e "SELECT COUNT(*) FROM ${db_name}.users;" 2>/dev/null || echo "0")
-
-if [ "$USERS_COUNT" = "0" ]; then
-    # Create a user directly in the database if no users exist
-    bashio::log.info "No users found. Creating admin user..."
-    USER_ID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-    CURRENT_DATE=$(date +"%Y-%m-%d %H:%M:%S")
-    PASSWORD_HASH=$(php -r "echo password_hash('welcome', PASSWORD_BCRYPT);")
-    
-    mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" "${db_name}" -e "
-        INSERT INTO users (id, email, password, role, blocked, blocked_code, created_at, updated_at, remember_token) 
-        VALUES ('${USER_ID}', '${admin_email}', '${PASSWORD_HASH}', 'owner', 0, null, '${CURRENT_DATE}', '${CURRENT_DATE}', null);
-    " || bashio::log.warning "Failed to create admin user. You may need to create one manually."
-    
-    if [ $? -eq 0 ]; then
-        bashio::log.info "Admin user created successfully. Login with email: ${admin_email} and password: welcome"
-    fi
+# See if there's a command for creating the first user
+if php artisan list | grep -q "firefly-iii:create-first-user"; then
+    # Use the official command if available
+    bashio::log.info "Using built-in command to create first user..."
+    # Temporarily set environment to local for user creation
+    sed -i 's/APP_ENV=production/APP_ENV=local/g' /var/www/html/.env
+    php artisan firefly-iii:create-first-user "${admin_email}" --no-interaction || true
+    # Reset environment to production
+    sed -i 's/APP_ENV=local/APP_ENV=production/g' /var/www/html/.env
 else
-    bashio::log.info "Users already exist in database, skipping user creation."
+    # Manual user creation as fallback
+    bashio::log.info "Using manual method to create first user..."
+    
+    # Check if any users exist in the database
+    USER_COUNT=$(mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "SELECT COUNT(*) FROM ${db_name}.users;" 2>/dev/null | tail -n 1)
+    
+    if [ "$USER_COUNT" = "0" ] || [ -z "$USER_COUNT" ]; then
+        # Create SQL query file
+        cat > /tmp/create_user.sql << EOSQL
+USE ${db_name};
+INSERT INTO users (email, password, role, blocked, created_at, updated_at) 
+VALUES ('${admin_email}', '\$2y\$10\$Tje3t.qWN8iwDkbYaTGC0uw8Cb65kbDKQNTpUxE2DMdXY0fYS/JPe', 'owner', 0, NOW(), NOW());
+EOSQL
+
+        # Execute the SQL file
+        mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" < /tmp/create_user.sql
+        
+        if [ $? -eq 0 ]; then
+            bashio::log.info "Admin user created successfully with email: ${admin_email} and password: welcome"
+        else
+            bashio::log.warning "Failed to create admin user. You may need to create one manually."
+        fi
+        
+        # Clean up
+        rm -f /tmp/create_user.sql
+    else
+        bashio::log.info "Users already exist in database, skipping user creation."
+    fi
 fi
 
 # Set permissions
