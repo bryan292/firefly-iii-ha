@@ -42,16 +42,13 @@ RUN apk update && \
         php82-posix \
         php82-xmlwriter \
         mysql-client \
-        mariadb-client \
         nginx \
         curl \
         supervisor \
         composer \
         netcat-openbsd \
         jq \
-        git && \
-    # Create symlink to ensure mariadb-client command is available
-    ln -sf /usr/bin/mysql /usr/bin/mariadb-client || true
+        git
 
 # Create directory structure
 RUN mkdir -p ${FIREFLY_PATH}

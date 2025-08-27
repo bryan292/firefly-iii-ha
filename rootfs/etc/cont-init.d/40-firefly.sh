@@ -110,7 +110,7 @@ php artisan migrate --no-interaction --force || true
 
 # Try to create admin user if it doesn't exist
 bashio::log.info "Ensuring admin user exists..."
-php artisan firefly-iii:create-admin "${admin_email}" --no-interaction || true
+php artisan firefly-iii:create-first-user "${admin_email}" --no-interaction || true
 
 # Set permissions
 chown -R nginx:nginx /var/www/html
