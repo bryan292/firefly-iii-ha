@@ -267,13 +267,17 @@ cat > /var/www/html/public/test.php << EOT
 echo "<h1>PHP is working!</h1>";
 echo "<h2>Current Environment Variables:</h2>";
 echo "<pre>";
-print_r($_SERVER);
+print_r(\$_SERVER);
 echo "</pre>";
 echo "<h2>Request Headers:</h2>";
 echo "<pre>";
-\$headers = getallheaders();
-foreach (\$headers as \$key => \$value) {
-    echo htmlspecialchars(\$key) . ": " . htmlspecialchars(\$value) . "\n";
+if (function_exists('getallheaders')) {
+    \$headers = getallheaders();
+    foreach (\$headers as \$key => \$value) {
+        echo htmlspecialchars(\$key) . ": " . htmlspecialchars(\$value) . "\n";
+    }
+} else {
+    echo "getallheaders() function not available";
 }
 echo "</pre>";
 ?>
