@@ -43,17 +43,30 @@ RUN apk add --no-cache \
     nginx \
     curl \
     supervisor \
-    composer
+    composer \
+    netcat-openbsd
+
+# Create directory structure
+RUN mkdir -p ${FIREFLY_PATH}
 
 # Download and install Firefly III
-RUN mkdir -p ${FIREFLY_PATH} \
-    && curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_VERSION}.tar.gz | tar xzf - -C /tmp/ \
+RUN curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_VERSION}.tar.gz | tar xzf - -C /tmp/ \
     && cp -r /tmp/firefly-iii-${FIREFLY_III_VERSION}/* ${FIREFLY_PATH}/ \
-    && rm -rf /tmp/firefly-iii-${FIREFLY_III_VERSION} \
-    && cd ${FIREFLY_PATH} \
-    && composer install --no-dev --no-scripts --no-suggest \
-    && rm -rf /root/.composer \
-    && chown -R nginx:nginx ${FIREFLY_PATH} \
+    && rm -rf /tmp/firefly-iii-${FIREFLY_III_VERSION}
+
+# Make sure the correct PHP version is used for composer
+RUN ln -sf /usr/bin/php82 /usr/bin/php
+
+# Set PHP configuration 
+RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini
+
+# Install dependencies
+RUN cd ${FIREFLY_PATH} \
+    && composer install --no-dev --no-interaction \
+    && rm -rf /root/.composer
+
+# Prepare permissions
+RUN chown -R nginx:nginx ${FIREFLY_PATH} \
     && chmod -R 775 ${FIREFLY_PATH}/storage
 
 # Copy root filesystem

@@ -27,27 +27,20 @@ The add-on requires a MariaDB database to store its data. Make sure you have the
 ## Configuration
 
 Example add-on configuration:
+
+```yaml
+app_url: ""
+database:
+  engine: mysql
+  host: core-mariadb
+  port: 3306
+  username: firefly
+  password: mysecretpassword
+  database: firefly
+timezone: Europe/London
+admin_email: admin@example.com
+log_level: info
 ```
-database:                                                                                              
-
-engine: mysql                                                                                          
-
-host: core-mariadb                                                                                     
-
-port: 3306                                                                                             
-
-username: firefly                                                                                      
-
-password: mysecretpassword                                                                             
-
-database: firefly                                                                                      
-
-timezone: Europe/London                                                                                
-
-admin_email: admin@example.com                                                                         
-
-log_level: info                                                                                        
-````
 
 ### Option: `app_url`
 
