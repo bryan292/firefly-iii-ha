@@ -13,6 +13,7 @@ declare db_password
 declare timezone
 declare log_level
 declare wait_timeout
+declare app_key
 
 # Make sure persistent data directory exists
 mkdir -p /data/firefly-iii
@@ -45,11 +46,14 @@ while ! nc -z "${db_host}" "${db_port}" > /dev/null 2>&1; do
     sleep 1
 done
 
+# Generate a valid Laravel app key (32 bytes base64 encoded)
+app_key="base64:$(openssl rand -base64 32)"
+
 # Setup environment file
 cat > /var/www/html/.env << EOF
 APP_ENV=production
 APP_DEBUG=false
-APP_KEY=base64:$(openssl rand -base64 32)
+APP_KEY=${app_key}
 APP_URL=${app_url}
 APP_LOG_LEVEL=${log_level}
 APP_TIMEZONE=${timezone}
@@ -82,13 +86,16 @@ cd /var/www/html || exit
 
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."
-mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || bashio::log.warning "Failed to create database, it might already exist"
+mariadb-client -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || bashio::log.warning "Failed to create database, it might already exist"
 
 # Cache configurations
 bashio::log.info "Setting up Laravel application..."
-php artisan config:cache || true
-php artisan route:cache || true
-php artisan view:cache || true
+php artisan config:clear || true
+php artisan cache:clear || true
+php artisan view:clear || true
+
+# Generate storage link
+php artisan storage:link || true
 
 # Run migrations
 bashio::log.info "Running database migrations..."

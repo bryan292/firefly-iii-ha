@@ -41,12 +41,13 @@ RUN apk update && \
         php82-pcntl \
         php82-posix \
         php82-xmlwriter \
+        openssl \
+        mariadb-client \
         nginx \
         curl \
         supervisor \
         composer \
         netcat-openbsd \
-        mysql-client \
         jq \
         git
 
