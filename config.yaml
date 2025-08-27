@@ -41,5 +41,5 @@ schema:
     password: "password"
     database: "str"
   timezone: "list(UTC|America/New_York|America/Chicago|America/Denver|America/Los_Angeles|Europe/London|Europe/Paris|Europe/Berlin|Europe/Amsterdam|Asia/Tokyo|Asia/Shanghai|Australia/Sydney)"
-  admin_email: "email?"
+  admin_email: "str?"
   log_level: "list(trace|debug|info|notice|warning|error|fatal)"
