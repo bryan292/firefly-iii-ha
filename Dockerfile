@@ -48,7 +48,9 @@ RUN apk update && \
         composer \
         netcat-openbsd \
         jq \
-        git
+        git && \
+    # Make sure openssl CLI is available (avoid using --no-cache to prevent dependency issues)
+    apk add openssl
 
 # Create directory structure
 RUN mkdir -p ${FIREFLY_PATH}
