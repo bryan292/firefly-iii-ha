@@ -4,7 +4,6 @@
 # Configures Firefly III
 # ==============================================================================
 declare admin_email
-declare app_url
 declare db_host
 declare db_port
 declare db_name
@@ -14,13 +13,13 @@ declare timezone
 declare log_level
 declare wait_timeout
 declare app_key
+declare app_url
 
 # Make sure persistent data directory exists
 mkdir -p /data/firefly-iii
 
 # Get config
 admin_email=$(bashio::config 'admin_email')
-app_url=$(bashio::config 'app_url')
 db_host=$(bashio::config 'database.host')
 db_port=$(bashio::config 'database.port')
 db_name=$(bashio::config 'database.database')
@@ -49,36 +48,33 @@ else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
 
-# If no app URL is provided, use the hassio ingress URL, but make it fully qualified
-if [[ -z "${app_url}" ]]; then
-    # Get the Home Assistant URL from Supervisor API
-    if bashio::supervisor.ping; then
-        hassio_url=$(bashio::supervisor.info.hostname)
-        if [[ -n "${hassio_url}" && "${hassio_url}" != "null" ]]; then
-            # Determine if we're using SSL
-            if bashio::var.true "$(bashio::supervisor.info.ssl)"; then
-                protocol="https"
-            else
-                protocol="http"
-            fi
-            # Get the ingress path only, not the full URL
-            ingress_path=$(bashio::addon.ingress_entry)
-            # Construct the full URL
-            app_url="${protocol}://${hassio_url}${ingress_path}"
-            bashio::log.info "Using Home Assistant URL: ${app_url}"
+# Get the Home Assistant URL from Supervisor API
+if bashio::supervisor.ping; then
+    hassio_url=$(bashio::supervisor.info.hostname)
+    if [[ -n "${hassio_url}" && "${hassio_url}" != "null" ]]; then
+        # Determine if we're using SSL
+        if bashio::var.true "$(bashio::supervisor.info.ssl)"; then
+            protocol="https"
         else
-            # Fallback to just the ingress URL
-            app_url=$(bashio::addon.ingress_url)
-            bashio::log.info "Using Ingress URL: ${app_url}"
+            protocol="http"
         fi
+        # Get the ingress path only, not the full URL
+        ingress_path=$(bashio::addon.ingress_entry)
+        # Construct the full URL
+        app_url="${protocol}://${hassio_url}${ingress_path}"
+        bashio::log.info "Using Home Assistant URL: ${app_url}"
     else
         # Fallback to just the ingress URL
         app_url=$(bashio::addon.ingress_url)
         bashio::log.info "Using Ingress URL: ${app_url}"
     fi
-    # Ensure the URL doesn't have a trailing slash
-    app_url=${app_url%/}
+else
+    # Fallback to just the ingress URL
+    app_url=$(bashio::addon.ingress_url)
+    bashio::log.info "Using Ingress URL: ${app_url}"
 fi
+# Ensure the URL doesn't have a trailing slash
+app_url=${app_url%/}
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
