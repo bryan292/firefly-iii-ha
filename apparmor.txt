@@ -1,0 +1,61 @@
+#include <tunables/global>
+
+profile firefly_iii flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities
+  file,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # S6-Overlay
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /package/** ix,
+  /command/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/tty rw,
+
+  # Bashio
+  /usr/lib/bashio/** ix,
+  /tmp/** rwk,
+
+  # Access to options.json and other files within your addon
+  /data/** rw,
+
+  # Nginx
+  /usr/sbin/nginx ix,
+  /var/log/nginx/** rw,
+  /etc/nginx/** r,
+  /etc/nginx/http.d/** rw,
+  /etc/nginx/nginx.conf r,
+  /proc/*/auxv r,
+  /var/www/** r,
+  /var/www/html/** rw,
+  /data/nginx/** rw,
+
+  # PHP-FPM
+  /usr/bin/php-fpm82 ix,
+  /usr/bin/php82 ix,
+  /usr/bin/php ix,
+  /etc/php82/** r,
+  /var/log/php82/** rw,
+  /proc/sys/kernel/random/uuid r,
+
+  # MySQL/MariaDB
+  /usr/bin/mysql* ix,
+  /usr/bin/mariadb ix,
+  
+  # File access
+  /var/www/html/** rwk,
+  /share/** rw,
+  /ssl/** r,
+  
+  # Allow network access
+  network tcp,
+  network udp,
+}
