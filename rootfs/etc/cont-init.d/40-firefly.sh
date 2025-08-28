@@ -333,8 +333,9 @@ cat > /tmp/fix_redirects.php << EOF
 if (file_exists(\$file)) {
     \$content = file_get_contents(\$file);
     
-    # Initialize the variable that will be used
+    # Initialize pattern variable
     \$pattern = '';
+    \$modified = '';
     
     # Find the handle method and modify the redirect
     \$pattern = '/return redirect\\(RouteServiceProvider::HOME\\);/';
