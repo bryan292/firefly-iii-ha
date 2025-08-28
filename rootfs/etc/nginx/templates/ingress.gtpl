@@ -1,9 +1,6 @@
 server {
     listen {{ .interface }}:8099 default_server;
-    server_name _;
-    
-    # Ingress interface
-    listen {{ .interface }}:8080;
+    listen {{ .interface }}:8080 default_server;
     
     root /var/www/html/public;
     index index.php;
@@ -14,8 +11,8 @@ server {
     client_max_body_size 100M;
 
     # Error and access logs
-    error_log /data/nginx/logs/error.log debug;
-    access_log /data/nginx/logs/access.log combined;
+    error_log /proc/1/fd/1 info;
+    access_log /proc/1/fd/1 combined;
 
     # Disable MIME type sniffing
     add_header X-Content-Type-Options "nosniff" always;
@@ -43,11 +40,6 @@ server {
     gzip_proxied any;
     gzip_comp_level 6;
     gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
-
-    # Remove the login redirect that can cause loops
-    # location = /login {
-    #     return 302 $scheme://$host:$server_port/;
-    # }
 
     # Laravel pretty URLs
     location / {
@@ -86,8 +78,6 @@ server {
 
     # Handle PHP files
     location ~ \.php$ {
-        # note: try_files resets $fastcgi_path_info, see stack overflow
-        # http://stackoverflow.com/a/26627846/1077746
         try_files $uri =404;
         
         # Split path info from path

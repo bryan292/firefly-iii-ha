@@ -12,42 +12,17 @@ bashio::log.info "Add-on IP address: ${ADDON_IP}"
 bashio::log.info "Network interfaces:"
 ip addr
 
+# Remove any existing configuration to avoid conflicts
+rm -f /etc/nginx/http.d/default.conf
+rm -f /etc/nginx/http.d/direct.conf
+rm -f /etc/nginx/http.d/ingress.conf
+
 # Generate Ingress configuration with proper IP binding
 bashio::var.json \
     interface "${ADDON_IP}" \
     | tempio \
       -template /etc/nginx/templates/ingress.gtpl \
       -out /etc/nginx/http.d/ingress.conf
-
-# Create a simpler direct configuration as fallback - without default_server to avoid conflicts
-cat > /etc/nginx/http.d/direct.conf << EOL
-server {
-    listen 8099;
-    listen 8080;
-    
-    root /var/www/html/public;
-    index index.php;
-
-    # Required for ingress
-    absolute_redirect off;
-
-    # Error and access logs to stdout/stderr for container logging
-    error_log /proc/1/fd/1 info;
-    access_log /proc/1/fd/1 combined;
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-
-    location ~ \.php$ {
-        try_files \$uri =404;
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-}
-EOL
 
 # Ensure directories exist with proper permissions
 mkdir -p /data/nginx/logs
@@ -68,7 +43,6 @@ nginx -t || bashio::log.warning "Nginx configuration test failed"
 
 # Set correct permissions
 chmod 644 /etc/nginx/http.d/ingress.conf
-chmod 644 /etc/nginx/http.d/direct.conf
 
 # Log completion
 bashio::log.info "Nginx configuration complete"
