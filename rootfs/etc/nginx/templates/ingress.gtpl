@@ -41,13 +41,13 @@ server {
     gzip_comp_level 6;
     gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
 
-    # Block external redirects - critical for ingress
+    # Handle login and register routes properly
     location = /login {
-        internal;
+        try_files $uri $uri/ /index.php?$query_string;
     }
 
     location = /register {
-        internal;
+        try_files $uri $uri/ /index.php?$query_string;
     }
 
     # Laravel pretty URLs
@@ -106,6 +106,7 @@ server {
         
         # Pass ingress info for Firefly
         fastcgi_param HTTP_X_INGRESS "true";
+        fastcgi_param HTTP_X_ORIGINAL_URL $request_uri;
         
         # Pass request headers
         fastcgi_param HTTP_X_FORWARDED_HOST $http_host;

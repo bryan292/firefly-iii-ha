@@ -150,7 +150,27 @@ EOF
 
 cd /var/www/html || exit
 
-# Create a middleware to fix redirects
+# Create a custom route to handle login and registration directly
+cat > /var/www/html/routes/ingress.php << EOF
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+Route::get('/login', function () {
+    return view('auth.login');
+});
+
+Route::get('/register', function () {
+    return view('auth.register');
+});
+
+// Add a fallback route to catch all URLs and redirect to home
+Route::fallback(function () {
+    return redirect('/');
+});
+EOF
+
+# Create middleware to fix redirects
 mkdir -p /var/www/html/app/Http/Middleware
 cat > /var/www/html/app/Http/Middleware/IngressMiddleware.php << EOF
 <?php
@@ -179,41 +199,71 @@ class IngressMiddleware
             });
         }
         
-        // Disable redirects to /login or /register
-        if (\$request->is('login') || \$request->is('register')) {
-            // Already authenticated, go to home
-            if (auth()->check()) {
-                return redirect()->to(\$ingressUrl);
-            }
-        }
-        
         return \$next(\$request);
     }
 }
 EOF
 
-# Register the middleware in kernel.php
-# We need to add our middleware to the web group
+# Fix the Kernel.php modification script to avoid undefined variable warning
 cat > /tmp/append_kernel.php << EOF
 <?php
 \$file = '/var/www/html/app/Http/Kernel.php';
 \$content = file_get_contents(\$file);
 
-// Add the middleware to the use statements
-\$pattern = '/namespace App\\\\Http;/';
-\$replacement = "namespace App\\Http;\n\nuse App\\Http\\Middleware\\IngressMiddleware;";
-\$content = preg_replace(\$pattern, \$replacement, \$content);
+// Add the middleware to the use statements at the top
+if (strpos(\$content, 'use App\\Http\\Middleware\\IngressMiddleware;') === false) {
+    \$content = str_replace('namespace App\\Http;', "namespace App\\Http;\n\nuse App\\Http\\Middleware\\IngressMiddleware;", \$content);
+}
 
-// Add the middleware to the web group
-\$pattern = '/protected \$middlewareGroups = \[\s*\'web\' => \[/';
-\$replacement = "protected \$middlewareGroups = [\n        'web' => [\n            \\IngressMiddleware::class,";
-\$content = preg_replace(\$pattern, \$replacement, \$content);
-
-file_put_contents(\$file, \$content);
-echo "Middleware added to Kernel.php\n";
+// Find the web middleware group pattern
+\$pattern = '/\'web\' => \[\s*/';
+if (preg_match(\$pattern, \$content, \$matches)) {
+    // Replace the web middleware group to include our middleware at the beginning
+    \$content = preg_replace(
+        \$pattern, 
+        "'web' => [\n            \\IngressMiddleware::class,\n            ", 
+        \$content, 
+        1
+    );
+    
+    // Write the modified content back to the file
+    file_put_contents(\$file, \$content);
+    echo "Middleware added to Kernel.php\n";
+} else {
+    echo "Could not find the web middleware group in Kernel.php\n";
+}
 EOF
 
 php /tmp/append_kernel.php
+
+# Include the custom routes in the main route service provider
+cat > /tmp/update_routes_provider.php << EOF
+<?php
+\$file = '/var/www/html/app/Providers/RouteServiceProvider.php';
+\$content = file_get_contents(\$file);
+
+// Find the routes mapping section
+\$pattern = '/this->routes\(function \(\) {.*?}\);/s';
+if (preg_match(\$pattern, \$content, \$matches)) {
+    // Make sure we include our ingress routes
+    \$replacement = str_replace(
+        'Route::middleware(\'web\')',
+        "// Load custom ingress routes\n            \$this->loadRoutesFrom(base_path('routes/ingress.php'));\n\n            Route::middleware('web')",
+        \$matches[0]
+    );
+    
+    // Replace the routes mapping section
+    \$content = str_replace(\$matches[0], \$replacement, \$content);
+    
+    // Write the modified content back to the file
+    file_put_contents(\$file, \$content);
+    echo "Ingress routes added to RouteServiceProvider.php\n";
+} else {
+    echo "Could not find the routes mapping section in RouteServiceProvider.php\n";
+}
+EOF
+
+php /tmp/update_routes_provider.php
 
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."
