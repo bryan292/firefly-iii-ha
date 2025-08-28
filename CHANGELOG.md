@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.77
+- Fixed PHP-FPM configuration by moving allow_url_fopen from pool level to php_admin_flag
+- Improved error handling for PHP-FPM startup
+- Fixed configuration syntax for PHP-FPM pool settings
+
 ## 1.0.76
 - Created a simplified PHP-FPM startup script using a temporary wrapper
 - Modified PHP-FPM configuration to use root user and custom pid file

@@ -26,7 +26,8 @@ pm.max_requests = 500
 
 ; Security settings - disabling restrictions to make it work in container
 security.limit_extensions = 
-allow_url_fopen = on
+; PHP settings should be set via php_admin_value, not directly
+php_admin_flag[allow_url_fopen] = on
 
 ; Redirect logs to stdout/stderr
 access.log = /proc/1/fd/1
@@ -36,7 +37,7 @@ php_admin_value[memory_limit] = 512M
 php_admin_value[upload_max_filesize] = 50M
 php_admin_value[post_max_size] = 50M
 php_admin_value[max_execution_time] = 300
-php_admin_value[display_errors] = off
+php_admin_flag[display_errors] = off
 php_admin_value[expose_php] = off
 
 ; Fix for the invalid boolean value error
