@@ -327,23 +327,20 @@ EOF
 php /tmp/update_routes_provider.php
 
 # Create a file to modify the RedirectIfAuthenticated middleware
-cat > /tmp/fix_redirects.php << EOF
+cat > /tmp/fix_redirects.php << 'EOF'
 <?php
-\$file = '/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php';
-if (file_exists(\$file)) {
-    \$content = file_get_contents(\$file);
+$file = '/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php';
+if (file_exists($file)) {
+    $content = file_get_contents($file);
     
-    # Initialize pattern variable
-    \$pattern = '';
-    \$modified = '';
+    // Define pattern and replacement
+    $pattern = '/return redirect\(RouteServiceProvider::HOME\);/';
+    $replacement = 'return redirect("/");';
     
-    # Find the handle method and modify the redirect
-    \$pattern = '/return redirect\\(RouteServiceProvider::HOME\\);/';
-    \$replacement = 'return redirect("/");';
-    
-    if (preg_match(\$pattern, \$content)) {
-        \$modified = preg_replace(\$pattern, \$replacement, \$content);
-        file_put_contents(\$file, \$modified);
+    // Only modify if pattern is found
+    if (preg_match($pattern, $content)) {
+        $modified = preg_replace($pattern, $replacement, $content);
+        file_put_contents($file, $modified);
         echo "Fixed RedirectIfAuthenticated middleware\n";
     }
 }
