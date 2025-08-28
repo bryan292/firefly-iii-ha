@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.72
+- Changed PHP-FPM and Nginx to run as nobody user
+- Set fully permissive permissions on directories to avoid permission issues
+- Improved temp directory setup to support the nobody user
+- Added explicit config file to PHP-FPM startup command
+
+## 1.0.71
+- Rolled back to running services as root
+- Simplified nginx configuration
+- Fixed temp directory paths
+- Removed problematic permission changes
+- Consolidated nginx configuration in one file
+
 ## 1.0.70
 - Rolled back to running services as root
 - Simplified nginx configuration

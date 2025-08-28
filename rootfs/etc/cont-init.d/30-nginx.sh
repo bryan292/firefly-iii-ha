@@ -12,21 +12,26 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
-# Create temp directories
+# Create temp directories with wide permissions
 mkdir -p /tmp/client_temp || true
 mkdir -p /tmp/proxy_temp || true
 mkdir -p /tmp/fastcgi_temp || true
 mkdir -p /tmp/uwsgi_temp || true
 mkdir -p /tmp/scgi_temp || true
+chmod -R 777 /tmp/client_temp || true
+chmod -R 777 /tmp/proxy_temp || true
+chmod -R 777 /tmp/fastcgi_temp || true
+chmod -R 777 /tmp/uwsgi_temp || true
+chmod -R 777 /tmp/scgi_temp || true
 
-# Make web root writable
+# Make web root writable by nobody user
 chmod -R 777 /var/www || true
 
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf || true
 rm -f /etc/nginx/http.d/direct.conf || true
 
-# Create a simple nginx config in http.d
+# Create a simple nginx config in http.d that doesn't use chown
 cat > /etc/nginx/http.d/ingress.conf << EOF
 server {
     listen 8099 default_server;
@@ -134,4 +139,4 @@ EOF
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."
-nginx -t && bashio::log.info "Nginx configuration complete" || bashio::log.warning "Nginx configuration test failed"
+nginx -t -c /etc/nginx/nginx.conf && bashio::log.info "Nginx configuration complete" || bashio::log.warning "Nginx configuration test failed"

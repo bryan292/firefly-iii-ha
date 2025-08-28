@@ -12,9 +12,9 @@ error_log = /proc/1/fd/2
 log_level = warning
 
 [www]
-; Run as root (container environment)
-user = root
-group = root
+; Use nobody user instead of root
+user = nobody
+group = nobody
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -33,9 +33,13 @@ php_admin_value[post_max_size] = 50M
 php_admin_value[max_execution_time] = 300
 php_admin_flag[display_errors] = off
 php_admin_flag[expose_php] = off
+
+; Disable user checks since we're in a container
+php_admin_flag[cgi.fix_pathinfo] = 0
+php_flag[display_errors] = off
 EOF
 
-# Create required directories (but no permissions changes)
+# Create required directories
 directories=("/var/www/html/storage/logs" 
              "/var/www/html/storage/app/public"
              "/var/www/html/storage/framework/cache"
@@ -43,14 +47,19 @@ directories=("/var/www/html/storage/logs"
              "/var/www/html/storage/framework/views"
              "/var/www/html/bootstrap/cache")
 
-# Ensure directories exist
+# Ensure directories exist with permissive permissions for nobody user
 for dir in "${directories[@]}"; do
     mkdir -p "$dir" || true
+    chmod -R 777 "$dir" || true
 done
 
-# Ensure the Laravel log file exists
+# Ensure Laravel log file exists with permissive permissions
 touch /var/www/html/storage/logs/laravel.log || true
+chmod 666 /var/www/html/storage/logs/laravel.log || true
 
-# Start PHP-FPM
+# Also ensure the whole application directory is world-writable
+chmod -R 777 /var/www/html || true
+
+# Start PHP-FPM with explicit config file
 bashio::log.info "Starting PHP-FPM..."
 exec php-fpm82 --nodaemonize --fpm-config /etc/php82/php-fpm.d/www.conf

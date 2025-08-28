@@ -7,6 +7,13 @@
 # Wait until PHP-FPM is available
 bashio::net.wait_for 9000 localhost 300
 
+# Ensure tmp directories have proper permissions
+chmod -R 777 /tmp/client_temp || true
+chmod -R 777 /tmp/proxy_temp || true
+chmod -R 777 /tmp/fastcgi_temp || true
+chmod -R 777 /tmp/uwsgi_temp || true
+chmod -R 777 /tmp/scgi_temp || true
+
 # Start Nginx
 bashio::log.info "Starting Nginx..."
-exec nginx -g "daemon off;"
+exec nginx -g "daemon off;" -c /etc/nginx/nginx.conf
