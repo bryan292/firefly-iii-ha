@@ -12,23 +12,15 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
-# Create temp directories with wide permissions but avoid chown
-mkdir -p /tmp/client_temp || true
-mkdir -p /tmp/proxy_temp || true
-mkdir -p /tmp/fastcgi_temp || true
-mkdir -p /tmp/uwsgi_temp || true
-mkdir -p /tmp/scgi_temp || true
-chmod -R 777 /tmp/client_temp || true
-chmod -R 777 /tmp/proxy_temp || true
-chmod -R 777 /tmp/fastcgi_temp || true
-chmod -R 777 /tmp/uwsgi_temp || true
-chmod -R 777 /tmp/scgi_temp || true
+# Create temp directories with proper structure but without chown
+mkdir -p /tmp/client_temp/0 /tmp/client_temp/1/1 /tmp/client_temp/1/2 || true
+mkdir -p /tmp/proxy_temp/0 /tmp/proxy_temp/1/1 /tmp/proxy_temp/1/2 || true
+mkdir -p /tmp/fastcgi_temp/0 /tmp/fastcgi_temp/1/1 /tmp/fastcgi_temp/1/2 || true
+mkdir -p /tmp/uwsgi_temp/0 /tmp/uwsgi_temp/1/1 /tmp/uwsgi_temp/1/2 || true
+mkdir -p /tmp/scgi_temp/0 /tmp/scgi_temp/1/1 /tmp/scgi_temp/1/2 || true
 
 # Make web root writable
 chmod -R 777 /var/www || true
-
-# Make sure nginx user exists (it should already exist in the base image)
-adduser -D -H -G www-data nginx 2>/dev/null || true
 
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf || true

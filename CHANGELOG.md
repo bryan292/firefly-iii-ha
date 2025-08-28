@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.81
+- Removed user directive from Nginx configuration to avoid permission issues
+- Created proper directory structure for Nginx temp files
+- Removed user and group settings from PHP-FPM pool configuration
+- Fixed permissions for critical system paths
+
 ## 1.0.80
 - Removed chown operations from PHP-FPM startup script to fix permission issues
 - Changed Nginx and PHP-FPM to use nobody user to avoid permission problems
