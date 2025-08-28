@@ -281,8 +281,8 @@ echo '<h1>PHP Test Page</h1>';
 echo '<p>If you can see this, PHP is working correctly with Nginx.</p>';
 echo '<p>Server time: ' . date('Y-m-d H:i:s') . '</p>';
 echo '<pre>';
-echo 'Document Root: ' . $_SERVER['DOCUMENT_ROOT'] . "\n";
-echo 'Request URI: ' . $_SERVER['REQUEST_URI'] . "\n";
+echo 'Document Root: ' . \$_SERVER['DOCUMENT_ROOT'] . "\n";
+echo 'Request URI: ' . \$_SERVER['REQUEST_URI'] . "\n";
 echo 'PHP Version: ' . phpversion() . "\n";
 echo '</pre>';
 EOT

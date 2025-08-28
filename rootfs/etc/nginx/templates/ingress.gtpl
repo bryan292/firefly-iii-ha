@@ -8,6 +8,9 @@ server {
     root /var/www/html/public;
     index index.php;
 
+    # Required for ingress
+    absolute_redirect off;
+
     client_max_body_size 100M;
 
     # Error and access logs
@@ -41,9 +44,25 @@ server {
     gzip_comp_level 6;
     gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
 
+    # Add support for OPTIONS preflight requests
+    if ($request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' '*';
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE';
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+        add_header 'Access-Control-Max-Age' 1728000;
+        add_header 'Content-Type' 'text/plain; charset=utf-8';
+        add_header 'Content-Length' 0;
+        return 204;
+    }
+
     # Laravel pretty URLs
     location / {
         try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Special direct access to HTML test page
+    location = /hello.html {
+        add_header Content-Type text/html;
     }
 
     # Special location for test.php
@@ -62,14 +81,38 @@ server {
 
     # Handle PHP files
     location ~ \.php$ {
-        include fastcgi_params;
+        # note: try_files resets $fastcgi_path_info, see stack overflow
+        # http://stackoverflow.com/a/26627846/1077746
+        try_files $uri =404;
+        
+        # Split path info from path
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        
+        # Connect to php-fpm via TCP socket
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
+        
+        # Include standard fastcgi parameters
+        include fastcgi_params;
+        
+        # Ensure document root is properly set
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_param PATH_INFO $fastcgi_path_info if_not_empty;
+        fastcgi_param HTTP_PROXY "";
+        
+        # Pass request headers
         fastcgi_param HTTP_X_FORWARDED_HOST $http_host;
         fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
         fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
+        
+        # FastCGI settings
+        fastcgi_connect_timeout 60;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 4 256k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
     }
     
     # Handle assets with proper caching
