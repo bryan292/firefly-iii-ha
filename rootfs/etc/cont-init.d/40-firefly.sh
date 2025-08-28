@@ -326,10 +326,9 @@ EOF
 
 php /tmp/update_routes_provider.php
 
-# Create a fix_redirects.php file without using PHP variables in bash context
-# This is where the issue was - bash was trying to expand $pattern, $content, and $modified
-# before the PHP script was executed
-cat > /tmp/fix_redirects.php << 'EOT'
+# Write the PHP code for fix_redirects directly to a file instead of using a heredoc
+# This avoids the bash variable expansion issue
+cat > /tmp/fix_redirects.php << 'ENDOFPHP'
 <?php
 $file = '/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php';
 if (file_exists($file)) {
@@ -346,7 +345,7 @@ if (file_exists($file)) {
         echo "Fixed RedirectIfAuthenticated middleware\n";
     }
 }
-EOT
+ENDOFPHP
 
 php /tmp/fix_redirects.php
 
