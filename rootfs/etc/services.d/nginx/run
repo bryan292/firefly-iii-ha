@@ -7,12 +7,19 @@
 # Wait until PHP-FPM is available
 bashio::net.wait_for 9000 localhost 300
 
-# Create temp directories without permissions (do not use chmod/chown)
-mkdir -p /tmp/client_temp/0 /tmp/client_temp/1/1 /tmp/client_temp/1/2 || true
-mkdir -p /tmp/proxy_temp/0 /tmp/proxy_temp/1/1 /tmp/proxy_temp/1/2 || true
-mkdir -p /tmp/fastcgi_temp/0 /tmp/fastcgi_temp/1/1 /tmp/fastcgi_temp/1/2 || true
-mkdir -p /tmp/uwsgi_temp/0 /tmp/uwsgi_temp/1/1 /tmp/uwsgi_temp/1/2 || true
-mkdir -p /tmp/scgi_temp/0 /tmp/scgi_temp/1/1 /tmp/scgi_temp/1/2 || true
+# Make sure www-data user exists (should already exist in Alpine Linux)
+if ! id -u www-data > /dev/null 2>&1; then
+    addgroup -S www-data 2>/dev/null || true
+    adduser -S -D -H -h /var/www -s /sbin/nologin -G www-data -g www-data www-data 2>/dev/null || true
+fi
+
+# Create temp directories with proper ownership
+mkdir -p /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp || true
+chmod -R 777 /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp || true
+chown -R www-data:www-data /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp || true
+
+# Ensure the web root has the right ownership
+chown -R www-data:www-data /var/www/html || true
 
 # Start Nginx without daemon mode
 bashio::log.info "Starting Nginx..."

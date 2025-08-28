@@ -13,9 +13,9 @@ log_level = warning
 pid = /tmp/php-fpm.pid
 
 [www]
-; Explicitly set user and group to root to avoid permission issues
-user = root
-group = root
+; Use www-data user and group which should exist in Alpine
+user = www-data
+group = www-data
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -43,6 +43,12 @@ php_admin_value[expose_php] = off
 php_admin_value[cgi.fix_pathinfo] = 0
 EOF
 
+# Make sure www-data user exists (should already exist in Alpine Linux)
+if ! id -u www-data > /dev/null 2>&1; then
+    addgroup -S www-data 2>/dev/null || true
+    adduser -S -D -H -h /var/www -s /sbin/nologin -G www-data -g www-data www-data 2>/dev/null || true
+fi
+
 # Create required directories
 directories=("/var/www/html/storage/logs" 
              "/var/www/html/storage/app/public"
@@ -64,6 +70,9 @@ chmod 666 /var/www/html/storage/logs/laravel.log || true
 # Create the PHP-FPM tmp directories with permissive permissions
 mkdir -p /tmp/php-fpm || true
 chmod -R 777 /tmp/php-fpm || true
+
+# Set ownership of the web root to www-data
+chown -R www-data:www-data /var/www/html || true
 
 # Start PHP-FPM with explicit config file
 bashio::log.info "Starting PHP-FPM..."

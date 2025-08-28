@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.83
+- Changed PHP-FPM to use www-data user and group instead of root
+- Updated Nginx configuration to use www-data user to match PHP-FPM
+- Added user creation in case www-data user doesn't exist
+- Improved directory permissions and ownership setup
+
 ## 1.0.82
 - Fixed PHP-FPM configuration to explicitly use root user and group
 - Updated Nginx configuration to use root user for proper permissions
