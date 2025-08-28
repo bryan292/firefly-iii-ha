@@ -29,12 +29,6 @@ chmod -R 777 /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp 
 rm -f /etc/nginx/http.d/default.conf
 rm -f /etc/nginx/http.d/direct.conf
 
-# Create a symbolic link for Nginx error log to redirect to stdout
-if [ -d "/var/lib/nginx/logs" ]; then
-    rm -f /var/lib/nginx/logs/error.log 2>/dev/null || true
-    ln -sf /proc/1/fd/2 /var/lib/nginx/logs/error.log 2>/dev/null || true
-fi
-
 # Create a simple nginx config in http.d with no ownership operations
 cat > /etc/nginx/http.d/ingress.conf << EOF
 server {
@@ -149,6 +143,12 @@ EOF
 chmod -R 777 /var/www/html/storage 2>/dev/null || true
 chmod -R 777 /var/www/html/bootstrap 2>/dev/null || true
 chmod -R 777 /var/www/html/bootstrap/cache 2>/dev/null || true
+
+# Make sure nginx user can access the directories
+if id -u nginx >/dev/null 2>&1; then
+    # Set permissions for nginx user if it exists
+    chown -R nginx:nginx /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp /tmp/nginx 2>/dev/null || true
+fi
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."

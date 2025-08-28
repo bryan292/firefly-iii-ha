@@ -103,13 +103,22 @@ bashio::log.info "PHP version: $(php -v 2>/dev/null || echo 'PHP not found')"
 bashio::log.info "Available PHP binaries:"
 find /usr -name "php*" -type f 2>/dev/null || echo "No PHP binaries found"
 
-# Fix PHP-FPM config to run as root if file exists and is writable
+# Get PHP-FPM user
+PHP_FPM_USER="nobody"
+if id -u www-data >/dev/null 2>&1; then
+    PHP_FPM_USER="www-data"
+elif id -u nginx >/dev/null 2>&1; then
+    PHP_FPM_USER="nginx"
+fi
+bashio::log.info "Using PHP-FPM user: ${PHP_FPM_USER}"
+
+# Fix PHP-FPM config to run as www-data or nginx if file exists and is writable
 if [ -f /etc/php8/php-fpm.d/www.conf ] && [ -w /etc/php8/php-fpm.d/www.conf ]; then
-    sed -i 's/user = nobody/user = root/g' /etc/php8/php-fpm.d/www.conf
-    sed -i 's/group = nobody/group = root/g' /etc/php8/php-fpm.d/www.conf
+    sed -i "s/user = nobody/user = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
+    sed -i "s/group = nobody/group = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
     # Also modify listen.owner and listen.group
-    sed -i 's/listen.owner = nobody/listen.owner = root/g' /etc/php8/php-fpm.d/www.conf
-    sed -i 's/listen.group = nobody/listen.group = root/g' /etc/php8/php-fpm.d/www.conf
+    sed -i "s/listen.owner = nobody/listen.owner = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
+    sed -i "s/listen.group = nobody/listen.group = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
 fi
 
 # Create a custom PHP-FPM pool configuration file if we can't modify the existing one
@@ -117,8 +126,8 @@ if [ ! -w /etc/php8/php-fpm.d/www.conf ]; then
     mkdir -p /tmp/php-fpm.d
     cat > /tmp/php-fpm.d/firefly.conf << EOF
 [firefly]
-user = root
-group = root
+user = ${PHP_FPM_USER}
+group = ${PHP_FPM_USER}
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 5
@@ -555,31 +564,31 @@ echo "PHP version: \$(php -v 2>/dev/null || echo 'PHP not found')"
 # Try each possible PHP-FPM executable in order
 if [ -f /usr/sbin/php-fpm8 ]; then
     echo "Using /usr/sbin/php-fpm8"
-    exec /usr/sbin/php-fpm8 --nodaemonize --fpm-config /etc/php8/php-fpm.conf -R
+    exec /usr/sbin/php-fpm8 --nodaemonize --fpm-config /etc/php8/php-fpm.conf
 elif [ -f /usr/sbin/php-fpm7 ]; then
     echo "Using /usr/sbin/php-fpm7"
-    exec /usr/sbin/php-fpm7 --nodaemonize --fpm-config /etc/php7/php-fpm.conf -R
+    exec /usr/sbin/php-fpm7 --nodaemonize --fpm-config /etc/php7/php-fpm.conf
 elif [ -f /usr/bin/php-fpm8 ]; then
     echo "Using /usr/bin/php-fpm8"
-    exec /usr/bin/php-fpm8 --nodaemonize -R
+    exec /usr/bin/php-fpm8 --nodaemonize
 elif [ -f /usr/bin/php-fpm7 ]; then
     echo "Using /usr/bin/php-fpm7"
-    exec /usr/bin/php-fpm7 --nodaemonize -R
+    exec /usr/bin/php-fpm7 --nodaemonize
 elif [ -f /usr/local/sbin/php-fpm ]; then
     echo "Using /usr/local/sbin/php-fpm"
-    exec /usr/local/sbin/php-fpm --nodaemonize -R
+    exec /usr/local/sbin/php-fpm --nodaemonize
 elif [ -f /usr/local/bin/php-fpm ]; then
     echo "Using /usr/local/bin/php-fpm"
-    exec /usr/local/bin/php-fpm --nodaemonize -R
+    exec /usr/local/bin/php-fpm --nodaemonize
 elif command -v php-fpm8 >/dev/null 2>&1; then
     echo "Using php-fpm8 from PATH"
-    exec php-fpm8 --nodaemonize -R
+    exec php-fpm8 --nodaemonize
 elif command -v php-fpm7 >/dev/null 2>&1; then
     echo "Using php-fpm7 from PATH"
-    exec php-fpm7 --nodaemonize -R
+    exec php-fpm7 --nodaemonize
 elif command -v php-fpm >/dev/null 2>&1; then
     echo "Using php-fpm from PATH"
-    exec php-fpm --nodaemonize -R
+    exec php-fpm --nodaemonize
 else
     echo "No PHP-FPM executable found!"
     # As a last resort, try to create a simple PHP server
