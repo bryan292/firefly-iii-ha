@@ -285,6 +285,11 @@ php /tmp/append_kernel.php
 cat > /tmp/update_routes_provider.php << EOF
 <?php
 \$file = '/var/www/html/app/Providers/RouteServiceProvider.php';
+if (!file_exists(\$file)) {
+    echo "RouteServiceProvider.php file not found\n";
+    exit(0);
+}
+
 \$content = file_get_contents(\$file);
 
 // Create a backup of the original file
@@ -293,7 +298,7 @@ file_put_contents(\$file . '.bak', \$content);
 // Find the boot method and add the route loading statement after its opening brace
 \$pattern = '/function boot\\(\\)\\s*{/';
 if (preg_match(\$pattern, \$content, \$matches)) {
-    \$replacement = \$matches[0] . "\n        \$this->loadRoutesFrom(base_path('routes/ingress.php'));";
+    \$replacement = \$matches[0] . "\n        \\\$this->loadRoutesFrom(base_path('routes/ingress.php'));";
     \$modified = preg_replace(\$pattern, \$replacement, \$content, 1);
     
     // Write the modified content back to the file
@@ -305,7 +310,7 @@ if (preg_match(\$pattern, \$content, \$matches)) {
     // Try to find the __construct method as an alternative
     \$pattern = '/function __construct\\(\\)\\s*{/';
     if (preg_match(\$pattern, \$content, \$matches)) {
-        \$replacement = \$matches[0] . "\n        \$this->loadRoutesFrom(base_path('routes/ingress.php'));";
+        \$replacement = \$matches[0] . "\n        \\\$this->loadRoutesFrom(base_path('routes/ingress.php'));";
         \$modified = preg_replace(\$pattern, \$replacement, \$content, 1);
         
         // Write the modified content back to the file
