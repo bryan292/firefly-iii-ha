@@ -326,25 +326,23 @@ EOF
 
 php /tmp/update_routes_provider.php
 
-# Instead of using cat with a heredoc, write the PHP script directly to a file
-# to prevent bash variable expansion issues
-# This avoids the "unbound variable" error with middleware
-printf '<?php
-$file = "/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php";
-if (file_exists($file)) {
-    $content = file_get_contents($file);
-    
-    // Define pattern and replacement
-    $pattern = "/return redirect\\(RouteServiceProvider::HOME\\);/";
-    $replacement = "return redirect(\"/\");";
-    
-    // Only modify if pattern is found
-    if (preg_match($pattern, $content)) {
-        $modified = preg_replace($pattern, $replacement, $content);
-        file_put_contents($file, $modified);
-        echo "Fixed RedirectIfAuthenticated middleware\\n";
-    }
-}' > /tmp/fix_redirects.php
+# Create a redirect fix script without using printf or cat heredoc - write directly to file with echo
+echo '<?php' > /tmp/fix_redirects.php
+echo '$file = "/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php";' >> /tmp/fix_redirects.php
+echo 'if (file_exists($file)) {' >> /tmp/fix_redirects.php
+echo '    $content = file_get_contents($file);' >> /tmp/fix_redirects.php
+echo '' >> /tmp/fix_redirects.php
+echo '    // Define pattern and replacement' >> /tmp/fix_redirects.php
+echo '    $pattern = "/return redirect\\(RouteServiceProvider::HOME\\);/";' >> /tmp/fix_redirects.php
+echo '    $replacement = "return redirect(\"/\");";' >> /tmp/fix_redirects.php
+echo '' >> /tmp/fix_redirects.php
+echo '    // Only modify if pattern is found' >> /tmp/fix_redirects.php
+echo '    if (preg_match($pattern, $content)) {' >> /tmp/fix_redirects.php
+echo '        $modified = preg_replace($pattern, $replacement, $content);' >> /tmp/fix_redirects.php
+echo '        file_put_contents($file, $modified);' >> /tmp/fix_redirects.php
+echo '        echo "Fixed RedirectIfAuthenticated middleware\n";' >> /tmp/fix_redirects.php
+echo '    }' >> /tmp/fix_redirects.php
+echo '}' >> /tmp/fix_redirects.php
 
 php /tmp/fix_redirects.php
 
