@@ -326,17 +326,15 @@ EOF
 
 php /tmp/update_routes_provider.php
 
-# Write the PHP code for fix_redirects directly to a file instead of using a heredoc
-# This avoids the bash variable expansion issue
-cat > /tmp/fix_redirects.php << 'ENDOFPHP'
-<?php
-$file = '/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php';
+# Create a direct PHP file for fixing redirects rather than using a heredoc
+echo '<?php
+$file = "/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php";
 if (file_exists($file)) {
     $content = file_get_contents($file);
     
     // Define pattern and replacement
-    $pattern = '/return redirect\(RouteServiceProvider::HOME\);/';
-    $replacement = 'return redirect("/");';
+    $pattern = "/return redirect\\(RouteServiceProvider::HOME\\);/";
+    $replacement = "return redirect(\"/\");";
     
     // Only modify if pattern is found
     if (preg_match($pattern, $content)) {
@@ -344,8 +342,7 @@ if (file_exists($file)) {
         file_put_contents($file, $modified);
         echo "Fixed RedirectIfAuthenticated middleware\n";
     }
-}
-ENDOFPHP
+}' > /tmp/fix_redirects.php
 
 php /tmp/fix_redirects.php
 
