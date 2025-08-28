@@ -19,6 +19,7 @@ declare middleware
 # Make sure persistent data directory exists
 mkdir -p /data/firefly-iii
 mkdir -p /data/nginx/logs
+chmod -R 777 /data/firefly-iii /data/nginx
 
 # Get config
 admin_email=$(bashio::config 'admin_email')
@@ -65,6 +66,11 @@ if [ -f /var/www/html/public/index.html ]; then
     rm -f /var/www/html/public/index.html
 fi
 
+# Fix permissions before creating directories
+# Set max permissions on the entire application directory
+find /var/www/html -type d -exec chmod 777 {} \; 2>/dev/null || true
+find /var/www/html -type f -exec chmod 666 {} \; 2>/dev/null || true
+
 # Create needed directories - using mkdir without trying to set permissions
 # This prevents "Operation not permitted" errors
 mkdir -p /var/www/html/storage/logs
@@ -77,9 +83,17 @@ mkdir -p /var/www/html/bootstrap/cache
 # Create log file
 touch /var/www/html/storage/logs/laravel.log 2>/dev/null || true
 
-# Set permissions using chmod which is less likely to fail than chown
+# Set maximum permissions using chmod which is less likely to fail than chown
 chmod -R 777 /var/www/html/storage
 chmod -R 777 /var/www/html/bootstrap/cache
+chmod 666 /var/www/html/storage/logs/laravel.log 2>/dev/null || true
+
+# Fix PHP-FPM config to run as root
+# This will prevent permission issues with the PHP process
+if [ -f /etc/php8/php-fpm.d/www.conf ]; then
+    sed -i 's/user = nobody/user = root/g' /etc/php8/php-fpm.d/www.conf
+    sed -i 's/group = nobody/group = root/g' /etc/php8/php-fpm.d/www.conf
+fi
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
@@ -161,10 +175,10 @@ HOME_ASSISTANT_INGRESS=true
 DISABLE_GLOBAL_REDIRECTS=true
 EOF
 
-cd /var/www/html || exit
+# Set permissions on .env file
+chmod 666 /var/www/html/.env
 
-# Set permissions on .env file (laravel needs to be able to read it)
-chmod 644 /var/www/html/.env
+cd /var/www/html || exit
 
 # Create a simple login/register controller to directly handle these routes
 mkdir -p /var/www/html/app/Http/Controllers
@@ -255,9 +269,15 @@ class ${middleware}
 }
 EOF
 
-# Set permissions for newly created files
-chmod -R 755 /var/www/html/app
-chmod -R 755 /var/www/html/routes
+# Make sure newly created files are also accessible
+chmod 666 /var/www/html/app/Http/Controllers/IngressController.php
+chmod 666 /var/www/html/routes/ingress.php
+chmod 666 /var/www/html/app/Http/Middleware/${middleware}.php
+chmod 777 /var/www/html/app/Http/Controllers
+chmod 777 /var/www/html/routes
+chmod 777 /var/www/html/app/Http/Middleware
+chmod -R 777 /var/www/html/app
+chmod -R 777 /var/www/html/routes
 
 # Fix the Kernel.php modification script to avoid undefined variable warning
 cat > /tmp/append_kernel.php << EOF
@@ -382,6 +402,9 @@ EOF
 chmod +x /tmp/fix_redirects.php
 php /tmp/fix_redirects.php || true
 
+# Make sure all modified PHP files are accessible
+find /var/www/html -name "*.php" -exec chmod 666 {} \; 2>/dev/null || true
+
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."
 # Try using mysql client instead of mariadb-client which seems to be missing
@@ -394,9 +417,10 @@ else
 fi
 
 # Set permissions on the entire Laravel app directory
-chmod -R 755 /var/www/html
+find /var/www/html -type d -exec chmod 777 {} \; 2>/dev/null || true
+find /var/www/html -type f -exec chmod 666 {} \; 2>/dev/null || true
 
-# Ensure storage and bootstrap/cache have 777 permissions
+# Double-check storage and bootstrap/cache have 777 permissions
 chmod -R 777 /var/www/html/storage
 chmod -R 777 /var/www/html/bootstrap/cache
 
@@ -417,6 +441,10 @@ php artisan migrate --no-interaction --force || true
 # Run optimize
 bashio::log.info "Optimizing application..."
 php artisan optimize || true
+
+# Make any files created by Laravel commands also readable
+find /var/www/html -type d -exec chmod 777 {} \; 2>/dev/null || true
+find /var/www/html -type f -exec chmod 666 {} \; 2>/dev/null || true
 
 # Only try to create admin user if admin_email is provided
 if [[ -n "${admin_email}" ]]; then
@@ -490,9 +518,13 @@ echo '</pre>';
 EOT
 
 # Make the test files readable
-chmod 644 /var/www/html/public/hello.html
-chmod 644 /var/www/html/public/info.php
-chmod 644 /var/www/html/public/test.php
+chmod 666 /var/www/html/public/hello.html
+chmod 666 /var/www/html/public/info.php
+chmod 666 /var/www/html/public/test.php
+
+# Final check to ensure everything is writable
+chmod -R 777 /var/www/html/storage
+chmod -R 777 /var/www/html/bootstrap/cache
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"

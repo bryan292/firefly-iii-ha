@@ -22,8 +22,12 @@ mkdir -p /tmp/scgi_temp/0 /tmp/scgi_temp/1/1 /tmp/scgi_temp/1/2
 # Create needed directories for logs - using /tmp instead
 mkdir -p /tmp/nginx/logs
 
-# Make all temp directories accessible with full permissions
+# Make sure Nginx can write to these directories
 chmod -R 777 /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp /tmp/nginx
+
+# Add run directory for Nginx where it expects to find some files
+mkdir -p /var/run/nginx
+chmod 777 /var/run/nginx
 
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf
@@ -45,7 +49,7 @@ server {
     client_max_body_size 100M;
 
     # Error and access logs to stdout/stderr instead of files
-    error_log /proc/1/fd/2 info;
+    error_log /proc/1/fd/2;
     access_log /proc/1/fd/1 combined;
 
     # Disable MIME type sniffing
@@ -116,6 +120,10 @@ server {
         fastcgi_connect_timeout 60;
         fastcgi_send_timeout 300;
         fastcgi_read_timeout 300;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 4 256k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
     }
     
     # Handle assets with proper caching
@@ -135,8 +143,14 @@ server {
 }
 EOF
 
-# Attempt to make the site directory and logs accessible
-chmod -R a+rwX /var/www/html 2>/dev/null || true
+# Create missing directories that Nginx might expect
+mkdir -p /var/lib/nginx/logs
+chmod 777 /var/lib/nginx/logs
+
+# Make the site directory fully accessible
+find /var/www/html -type d -exec chmod 777 {} \; 2>/dev/null || true
+find /var/www/html -type f -exec chmod 666 {} \; 2>/dev/null || true
+chmod -R 777 /var/www/html/storage /var/www/html/bootstrap 2>/dev/null || true
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."
