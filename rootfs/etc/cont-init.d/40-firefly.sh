@@ -65,7 +65,7 @@ if [ -f /var/www/html/public/index.html ]; then
     rm -f /var/www/html/public/index.html 2>/dev/null || true
 fi
 
-# Create needed directories but avoid chmod operations that require permissions
+# Create needed directories but avoid chmod/chown operations
 mkdir -p /var/www/html/storage/logs 2>/dev/null || true
 mkdir -p /var/www/html/storage/app/public 2>/dev/null || true
 mkdir -p /var/www/html/storage/framework/cache 2>/dev/null || true
@@ -428,6 +428,12 @@ EOSQL
 else
     bashio::log.info "No admin email provided, skipping user creation."
 fi
+
+# Make storage and bootstrap directories writable without chown
+find /var/www/html/storage -type d -exec chmod a+rwx {} \; 2>/dev/null || true
+find /var/www/html/bootstrap/cache -type d -exec chmod a+rwx {} \; 2>/dev/null || true
+find /var/www/html/storage -type f -exec chmod a+rw {} \; 2>/dev/null || true
+find /var/www/html/bootstrap/cache -type f -exec chmod a+rw {} \; 2>/dev/null || true
 
 # Create a simple standalone HTML file to verify the web server is working
 cat > /var/www/html/public/hello.html << EOT

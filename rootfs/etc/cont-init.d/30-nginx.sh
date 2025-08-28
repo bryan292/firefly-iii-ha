@@ -12,15 +12,18 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
-# Create temp directories with proper structure but without chown
+# Create temp directories with proper structure but avoid permission changes
 mkdir -p /tmp/client_temp/0 /tmp/client_temp/1/1 /tmp/client_temp/1/2 || true
 mkdir -p /tmp/proxy_temp/0 /tmp/proxy_temp/1/1 /tmp/proxy_temp/1/2 || true
 mkdir -p /tmp/fastcgi_temp/0 /tmp/fastcgi_temp/1/1 /tmp/fastcgi_temp/1/2 || true
 mkdir -p /tmp/uwsgi_temp/0 /tmp/uwsgi_temp/1/1 /tmp/uwsgi_temp/1/2 || true
 mkdir -p /tmp/scgi_temp/0 /tmp/scgi_temp/1/1 /tmp/scgi_temp/1/2 || true
 
-# Make web root writable
-chmod -R 777 /var/www || true
+# Create needed directories for logs - using /tmp instead
+mkdir -p /tmp/nginx/logs || true
+
+# Make web root accessible without permissions changes
+chmod -R a+rw /tmp/nginx /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp || true
 
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf || true
@@ -41,7 +44,7 @@ server {
 
     client_max_body_size 100M;
 
-    # Error and access logs to stdout/stderr
+    # Error and access logs to stdout/stderr instead of files
     error_log /proc/1/fd/2 info;
     access_log /proc/1/fd/1 combined;
 
@@ -134,4 +137,4 @@ EOF
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."
-nginx -t -c /etc/nginx/nginx.conf && bashio::log.info "Nginx configuration complete" || bashio::log.warning "Nginx configuration test failed"
+nginx -t && bashio::log.info "Nginx configuration complete" || bashio::log.warning "Nginx configuration test failed"
