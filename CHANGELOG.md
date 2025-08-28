@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.76
+- Created a simplified PHP-FPM startup script using a temporary wrapper
+- Modified PHP-FPM configuration to use root user and custom pid file
+- Removed problematic PHP-FPM flags that could cause startup issues
+- Set all logs to stdout/stderr for better container integration
+
 ## 1.0.75
 - Added the PHP-FPM flag --allow-to-run-as-root to bypass security restriction
 - Disabled PHP-FPM security.limit_extensions to allow all file types
