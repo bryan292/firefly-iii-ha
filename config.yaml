@@ -1,6 +1,6 @@
 name: "Firefly III"
 description: "Firefly III: A free and open source personal finance manager"
-version: "1.0.91"
+version: "1.0.92"
 slug: "firefly_iii"
 init: false
 url: "https://github.com/bryan292/firefly-iii-ha"
