@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.75
+- Added the PHP-FPM flag --allow-to-run-as-root to bypass security restriction
+- Disabled PHP-FPM security.limit_extensions to allow all file types
+- Added additional PHP configuration flags for better compatibility
+- Created dedicated PHP-FPM temp directory with proper permissions
+
 ## 1.0.74
 - Changed PHP-FPM to run as root user to fix persistent permission issues
 - Simplified PHP-FPM configuration to avoid security warnings

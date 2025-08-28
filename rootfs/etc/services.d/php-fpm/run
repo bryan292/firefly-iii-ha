@@ -12,9 +12,9 @@ error_log = /proc/1/fd/2
 log_level = warning
 
 [www]
-; Run as root in container environment
-user = root
-group = root
+; Use nobody user with security.limit_extensions=off to avoid permission issues
+user = nobody
+group = nobody
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -22,6 +22,10 @@ pm.start_servers = 3
 pm.min_spare_servers = 2
 pm.max_spare_servers = 5
 pm.max_requests = 500
+
+; Security settings - disabling restrictions to make it work in container
+security.limit_extensions = 
+php_admin_flag[allow_url_fopen] = on
 
 ; Redirect logs to stdout/stderr
 access.log = /proc/1/fd/1
@@ -59,6 +63,11 @@ chmod 666 /var/www/html/storage/logs/laravel.log || true
 # Also ensure the whole application directory is world-writable
 chmod -R 777 /var/www/html || true
 
+# Create the PHP-FPM tmp directories with permissive permissions
+mkdir -p /tmp/php-fpm || true
+chmod -R 777 /tmp/php-fpm || true
+
 # Start PHP-FPM with explicit config file
 bashio::log.info "Starting PHP-FPM..."
-exec php-fpm82 --nodaemonize --fpm-config /etc/php82/php-fpm.d/www.conf
+# Use --allow-to-run-as-root flag to override security restriction
+exec php-fpm82 --nodaemonize --fpm-config /etc/php82/php-fpm.d/www.conf --allow-to-run-as-root
