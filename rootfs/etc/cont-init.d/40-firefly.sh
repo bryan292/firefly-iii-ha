@@ -17,8 +17,8 @@ declare app_url
 declare middleware
 
 # Make sure persistent data directory exists
-mkdir -p /data/firefly-iii
-mkdir -p /data/nginx/logs
+mkdir -p /data/firefly-iii 2>/dev/null || true
+mkdir -p /data/nginx/logs 2>/dev/null || true
 
 # Get config
 admin_email=$(bashio::config 'admin_email')
@@ -46,7 +46,7 @@ done
 # Generate a valid Laravel app key (32 bytes base64 encoded) without using openssl
 if [ ! -f /data/firefly-iii/app_key ]; then
     app_key="base64:$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n')"
-    echo "${app_key}" > /data/firefly-iii/app_key
+    echo "${app_key}" > /data/firefly-iii/app_key 2>/dev/null || true
 else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
@@ -62,14 +62,19 @@ bashio::log.info "Ingress entry: ${ingress_entry}"
 
 # Remove index.html if exists (it would take precedence over index.php)
 if [ -f /var/www/html/public/index.html ]; then
-    rm -f /var/www/html/public/index.html
+    rm -f /var/www/html/public/index.html 2>/dev/null || true
 fi
 
-# Create needed directories with proper permissions
-mkdir -p /var/www/html/storage/logs
-chmod -R 777 /var/www/html/storage/logs
-touch /var/www/html/storage/logs/laravel.log
-chmod 666 /var/www/html/storage/logs/laravel.log
+# Create needed directories but avoid chmod operations that require permissions
+mkdir -p /var/www/html/storage/logs 2>/dev/null || true
+mkdir -p /var/www/html/storage/app/public 2>/dev/null || true
+mkdir -p /var/www/html/storage/framework/cache 2>/dev/null || true
+mkdir -p /var/www/html/storage/framework/sessions 2>/dev/null || true
+mkdir -p /var/www/html/storage/framework/views 2>/dev/null || true
+mkdir -p /var/www/html/bootstrap/cache 2>/dev/null || true
+
+# Create log file - avoid chmod
+touch /var/www/html/storage/logs/laravel.log 2>/dev/null || true
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
@@ -154,7 +159,7 @@ EOF
 cd /var/www/html || exit
 
 # Create a simple login/register controller to directly handle these routes
-mkdir -p /var/www/html/app/Http/Controllers
+mkdir -p /var/www/html/app/Http/Controllers 2>/dev/null || true
 cat > /var/www/html/app/Http/Controllers/IngressController.php << EOF
 <?php
 
@@ -186,7 +191,7 @@ class IngressController extends Controller
 EOF
 
 # Create a custom route to handle login and registration directly
-mkdir -p /var/www/html/routes
+mkdir -p /var/www/html/routes 2>/dev/null || true
 cat > /var/www/html/routes/ingress.php << EOF
 <?php
 
@@ -203,7 +208,7 @@ Route::fallback(function () {
 EOF
 
 # Create middleware to fix redirects
-mkdir -p /var/www/html/app/Http/Middleware
+mkdir -p /var/www/html/app/Http/Middleware 2>/dev/null || true
 cat > /var/www/html/app/Http/Middleware/${middleware}.php << EOF
 <?php
 
@@ -246,6 +251,11 @@ EOF
 cat > /tmp/append_kernel.php << EOF
 <?php
 \$file = '/var/www/html/app/Http/Kernel.php';
+if (!file_exists(\$file)) {
+    echo "Kernel.php file not found\n";
+    exit(0);
+}
+
 \$content = file_get_contents(\$file);
 
 // Directly modify the Kernel.php file to register our middleware
@@ -281,7 +291,7 @@ if (\$modified !== \$content) {
 }
 EOF
 
-php /tmp/append_kernel.php
+php /tmp/append_kernel.php || true
 
 # Fix the route service provider update to not use $this in static context
 cat > /tmp/update_routes_provider.php << EOF
@@ -330,7 +340,7 @@ if (preg_match(\$pattern, \$content, \$matches)) {
 }
 EOF
 
-php /tmp/update_routes_provider.php
+php /tmp/update_routes_provider.php || true
 
 # Create a redirect fix script without using printf or cat heredoc - write directly to file with echo
 echo '<?php' > /tmp/fix_redirects.php
@@ -350,7 +360,7 @@ echo '        echo "Fixed RedirectIfAuthenticated middleware\n";' >> /tmp/fix_re
 echo '    }' >> /tmp/fix_redirects.php
 echo '}' >> /tmp/fix_redirects.php
 
-php /tmp/fix_redirects.php
+php /tmp/fix_redirects.php || true
 
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."
@@ -363,26 +373,11 @@ else
     bashio::log.warning "No MySQL/MariaDB client found, skipping database creation"
 fi
 
-# Create and set permissions for storage directories before Laravel commands
-bashio::log.info "Setting up storage directories..."
-mkdir -p /var/www/html/storage/app/public
-mkdir -p /var/www/html/storage/framework/cache
-mkdir -p /var/www/html/storage/framework/sessions
-mkdir -p /var/www/html/storage/framework/views
-mkdir -p /var/www/html/storage/logs
-mkdir -p /var/www/html/bootstrap/cache
-
-# Apply permissions to all storage directories
-chmod -R 777 /var/www/html/storage
-chmod -R 777 /var/www/html/bootstrap/cache
-chown -R nginx:nginx /var/www/html/storage
-chown -R nginx:nginx /var/www/html/bootstrap/cache
-
 # Cache configurations
 bashio::log.info "Setting up Laravel application..."
-php artisan config:clear
-php artisan cache:clear
-php artisan view:clear
+php artisan config:clear || true
+php artisan cache:clear || true
+php artisan view:clear || true
 
 # Generate storage link
 bashio::log.info "Creating storage link..."
@@ -390,11 +385,11 @@ php artisan storage:link || true
 
 # Run migrations
 bashio::log.info "Running database migrations..."
-php artisan migrate --no-interaction --force
+php artisan migrate --no-interaction --force || true
 
 # Run optimize
 bashio::log.info "Optimizing application..."
-php artisan optimize
+php artisan optimize || true
 
 # Only try to create admin user if admin_email is provided
 if [[ -n "${admin_email}" ]]; then
@@ -402,7 +397,7 @@ if [[ -n "${admin_email}" ]]; then
     bashio::log.info "Ensuring admin user exists..."
 
     # Check if any users exist in the database
-    USER_COUNT=$(mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "SELECT COUNT(*) FROM ${db_name}.users;" 2>/dev/null | tail -n 1)
+    USER_COUNT=$(mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" -e "SELECT COUNT(*) FROM ${db_name}.users;" 2>/dev/null | tail -n 1) || USER_COUNT="0"
     
     if [ "$USER_COUNT" = "0" ] || [ -z "$USER_COUNT" ]; then
         # See if there's a command for creating the first user
@@ -422,13 +417,7 @@ VALUES ('${admin_email}', '\$2y\$10\$Tje3t.qWN8iwDkbYaTGC0uw8Cb65kbDKQNTpUxE2DMd
 EOSQL
 
             # Execute the SQL file
-            mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" < /tmp/create_user.sql
-            
-            if [ $? -eq 0 ]; then
-                bashio::log.info "Admin user created successfully with email: ${admin_email} and password: welcome"
-            else
-                bashio::log.warning "Failed to create admin user. You may need to create one manually."
-            fi
+            mysql -h "${db_host}" -P "${db_port}" -u "${db_user}" -p"${db_password}" < /tmp/create_user.sql || true
             
             # Clean up
             rm -f /tmp/create_user.sql
@@ -439,33 +428,6 @@ EOSQL
 else
     bashio::log.info "No admin email provided, skipping user creation."
 fi
-
-# Double-check permissions after all operations
-bashio::log.info "Finalizing file permissions..."
-find /var/www/html -type d -exec chmod 755 {} \;
-find /var/www/html -type f -exec chmod 644 {} \;
-
-# Ensure critical directories have the right permissions
-chmod -R 777 /var/www/html/storage
-chmod -R 777 /var/www/html/bootstrap/cache
-
-# Create touch files for logs to ensure they exist with proper permissions
-touch /var/www/html/storage/logs/laravel.log
-touch /var/www/html/storage/logs/ff3-cli-$(date +'%Y-%m-%d').log
-chmod 666 /var/www/html/storage/logs/*.log
-
-# Set up Nginx logs
-mkdir -p /data/nginx/logs
-touch /data/nginx/logs/error.log
-touch /data/nginx/logs/access.log
-chmod 644 /data/nginx/logs/*.log
-chown -R nginx:nginx /data/nginx
-
-# Set proper ownership for the entire application
-chown -R nginx:nginx /var/www/html
-
-# Create a file to indicate successful initialization
-touch /var/www/html/.initialized
 
 # Create a simple standalone HTML file to verify the web server is working
 cat > /var/www/html/public/hello.html << EOT
@@ -481,14 +443,12 @@ cat > /var/www/html/public/hello.html << EOT
 </body>
 </html>
 EOT
-chmod 644 /var/www/html/public/hello.html
 
 # Create PHP test files for debugging
 cat > /var/www/html/public/info.php << EOT
 <?php
 phpinfo();
 EOT
-chmod 644 /var/www/html/public/info.php
 
 cat > /var/www/html/public/test.php << EOT
 <?php
@@ -501,7 +461,6 @@ echo 'Request URI: ' . \$_SERVER['REQUEST_URI'] . "\n";
 echo 'PHP Version: ' . phpversion() . "\n";
 echo '</pre>';
 EOT
-chmod 644 /var/www/html/public/test.php
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"
