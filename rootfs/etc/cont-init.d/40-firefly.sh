@@ -29,6 +29,7 @@ db_user=$(bashio::config 'database.username')
 db_password=$(bashio::config 'database.password')
 timezone=$(bashio::config 'timezone')
 log_level=$(bashio::config 'log_level')
+middleware="IngressMiddleware"
 
 # Wait for database to be available
 bashio::log.info "Waiting for database ${db_host}:${db_port} to be available..."
@@ -203,7 +204,7 @@ EOF
 
 # Create middleware to fix redirects
 mkdir -p /var/www/html/app/Http/Middleware
-cat > /var/www/html/app/Http/Middleware/IngressMiddleware.php << EOF
+cat > /var/www/html/app/Http/Middleware/${middleware}.php << EOF
 <?php
 
 namespace App\Http\Middleware;
@@ -213,7 +214,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Redirect;
 
-class IngressMiddleware
+class ${middleware}
 {
     public function handle(Request \$request, Closure \$next)
     {
@@ -249,14 +250,14 @@ cat > /tmp/append_kernel.php << EOF
 
 // Directly modify the Kernel.php file to register our middleware
 // Add the use statement first
-\$content = str_replace('namespace App\\\\Http;', "namespace App\\\\Http;\n\nuse App\\\\Http\\\\Middleware\\\\IngressMiddleware;", \$content);
+\$content = str_replace('namespace App\\\\Http;', "namespace App\\\\Http;\n\nuse App\\\\Http\\\\Middleware\\\\${middleware};", \$content);
 
 // Create a backup of the original file
 file_put_contents(\$file . '.bak', \$content);
 
 // Simple string replacement for the web middleware array
 \$pattern = "/'web' => \\[/";
-\$replacement = "'web' => [\n        \\\\IngressMiddleware::class,";
+\$replacement = "'web' => [\n        \\\\${middleware}::class,";
 
 // Perform the replacement
 \$modified = preg_replace(\$pattern, \$replacement, \$content);
@@ -272,7 +273,7 @@ if (\$modified !== \$content) {
     // Find protected $middleware = [
     \$pattern = "/protected \\\$middleware = \\[/";
     if (preg_match(\$pattern, \$content, \$matches)) {
-        \$replacement = \$matches[0] . "\n        \\\\IngressMiddleware::class,";
+        \$replacement = \$matches[0] . "\n        \\\\${middleware}::class,";
         \$modified = preg_replace(\$pattern, \$replacement, \$content);
         file_put_contents(\$file, \$modified);
         echo "Added middleware to global middleware array instead\n";
