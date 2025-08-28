@@ -13,9 +13,9 @@ log_level = warning
 pid = /tmp/php-fpm.pid
 
 [www]
-; Use apache user instead of root or nobody
-user = apache
-group = apache
+; Use nginx user instead of apache
+user = nginx
+group = nginx
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -68,20 +68,20 @@ chmod -R 777 /var/www/html || true
 mkdir -p /tmp/php-fpm || true
 chmod -R 777 /tmp/php-fpm || true
 
-# Create apache user if it doesn't exist
-adduser -D -H -G www-data apache 2>/dev/null || true
+# Make sure nginx user exists (it should already exist in the base image)
+adduser -D -H -G www-data nginx 2>/dev/null || true
 
 # Start PHP-FPM with explicit config file
 bashio::log.info "Starting PHP-FPM..."
 
-# Create a special flag file to indicate PHP-FPM should run as apache
-touch /tmp/php-fpm-run-as-apache
+# Create a special flag file to indicate PHP-FPM should run as nginx
+touch /tmp/php-fpm-run-as-nginx
 
 # Create a temporary wrapper script to run php-fpm with the modified config
 cat > /tmp/run-php-fpm.sh << 'EOF'
 #!/bin/sh
-# Set ownership of all files to apache user to fix permission issues
-chown -R apache:apache /var/www/html
+# Set ownership of all files to nginx user to fix permission issues
+chown -R nginx:nginx /var/www/html || true
 # Run PHP-FPM with explicit config
 exec php-fpm82 -F -y /etc/php82/php-fpm.d/www.conf -c /etc/php82/php.ini
 EOF

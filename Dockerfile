@@ -67,6 +67,8 @@ RUN mkdir -p ${FIREFLY_PATH} && \
     mkdir -p /tmp/nginx/fastcgi_temp && \
     mkdir -p /tmp/nginx/uwsgi_temp && \
     mkdir -p /tmp/nginx/scgi_temp && \
+    # Make sure nginx user exists with proper group
+    adduser -D -H -s /sbin/nologin -G www-data nginx || true && \
     # Set very permissive permissions for add-on container environment
     chmod -R 777 ${FIREFLY_PATH} && \
     chmod -R 777 /tmp/nginx && \

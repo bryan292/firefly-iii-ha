@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.79
+- Fixed user permission issues by switching from apache to nginx user
+- Updated Nginx configuration to use nginx user instead of apache
+- Updated PHP-FPM configuration to use nginx user instead of apache
+- Added explicit user creation to ensure nginx user exists
+- Fixed directory and file permissions to work with nginx user
+
 ## 1.0.78
 - Changed PHP-FPM to run as apache user instead of root or nobody
 - Created apache user explicitly to ensure it exists

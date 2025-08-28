@@ -27,6 +27,9 @@ chmod -R 777 /tmp/scgi_temp || true
 # Make web root writable
 chmod -R 777 /var/www || true
 
+# Make sure nginx user exists (it should already exist in the base image)
+adduser -D -H -G www-data nginx 2>/dev/null || true
+
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf || true
 rm -f /etc/nginx/http.d/direct.conf || true
