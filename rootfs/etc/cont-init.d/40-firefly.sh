@@ -261,28 +261,12 @@ chown -R nginx:nginx /var/www/html
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
 
-# Create a PHP test file to verify PHP is working
-cat > /var/www/html/public/test.php << EOT
+# Create PHP info file for debugging
+cat > /var/www/html/public/info.php << EOT
 <?php
-echo "<h1>PHP is working!</h1>";
-echo "<h2>Current Environment Variables:</h2>";
-echo "<pre>";
-print_r(\$_SERVER);
-echo "</pre>";
-echo "<h2>Request Headers:</h2>";
-echo "<pre>";
-if (function_exists('getallheaders')) {
-    \$headers = getallheaders();
-    foreach (\$headers as \$key => \$value) {
-        echo htmlspecialchars(\$key) . ": " . htmlspecialchars(\$value) . "\n";
-    }
-} else {
-    echo "getallheaders() function not available";
-}
-echo "</pre>";
-?>
+phpinfo();
 EOT
-chmod 644 /var/www/html/public/test.php
+chmod 644 /var/www/html/public/info.php
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"

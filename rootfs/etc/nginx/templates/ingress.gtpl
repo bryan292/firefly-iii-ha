@@ -41,32 +41,22 @@ server {
     gzip_comp_level 6;
     gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
 
-    # Handle pre-flight requests for CORS
-    location ~ ^/(.*)$ {
-        if ($request_method = 'OPTIONS') {
-            add_header 'Access-Control-Allow-Origin' '*';
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE';
-            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
-            add_header 'Access-Control-Max-Age' 1728000;
-            add_header 'Content-Type' 'text/plain; charset=utf-8';
-            add_header 'Content-Length' 0;
-            return 204;
-        }
+    # Laravel pretty URLs
+    location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
     # Main location for PHP files
     location ~ \.php$ {
-        # Include standard FastCGI parameters
-        include fastcgi_params;
-        
-        # Pass PHP scripts to PHP-FPM
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
         
+        # Include standard FastCGI parameters
+        include fastcgi_params;
+        
         # Set the script filename parameter for PHP-FPM
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param DOCUMENT_ROOT $document_root;
         
         # Set additional headers for PHP scripts
         fastcgi_param HTTP_X_INGRESS 1;
@@ -80,9 +70,6 @@ server {
         fastcgi_connect_timeout 300;
         fastcgi_send_timeout 300;
         fastcgi_read_timeout 300;
-        
-        # Add headers for PHP responses
-        add_header Access-Control-Allow-Origin "*" always;
     }
     
     # Handle assets with proper caching
@@ -96,12 +83,11 @@ server {
     
     # Handle /test.php requests specially for debugging
     location = /test.php {
-        include fastcgi_params;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
         fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param HTTP_X_FORWARDED_HOST $http_host;
-        fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
-        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
     }
     
     # Block access to hidden files
