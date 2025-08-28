@@ -151,6 +151,7 @@ EOF
 cd /var/www/html || exit
 
 # Create a custom route to handle login and registration directly
+mkdir -p /var/www/html/routes
 cat > /var/www/html/routes/ingress.php << EOF
 <?php
 
@@ -211,26 +212,30 @@ cat > /tmp/append_kernel.php << EOF
 \$content = file_get_contents(\$file);
 
 // Add the middleware to the use statements at the top
-if (strpos(\$content, 'use App\\Http\\Middleware\\IngressMiddleware;') === false) {
-    \$content = str_replace('namespace App\\Http;', "namespace App\\Http;\n\nuse App\\Http\\Middleware\\IngressMiddleware;", \$content);
+if (strpos(\$content, 'use App\\\\Http\\\\Middleware\\\\IngressMiddleware;') === false) {
+    \$content = str_replace('namespace App\\\\Http;', "namespace App\\\\Http;\n\nuse App\\\\Http\\\\Middleware\\\\IngressMiddleware;", \$content);
 }
 
-// Find the web middleware group pattern
-\$pattern = '/\'web\' => \[\s*/';
-if (preg_match(\$pattern, \$content, \$matches)) {
-    // Replace the web middleware group to include our middleware at the beginning
-    \$content = preg_replace(
-        \$pattern, 
-        "'web' => [\n            \\IngressMiddleware::class,\n            ", 
-        \$content, 
-        1
-    );
-    
-    // Write the modified content back to the file
-    file_put_contents(\$file, \$content);
-    echo "Middleware added to Kernel.php\n";
+// Find the middleware groups section
+if (strpos(\$content, "protected \\\$middlewareGroups") !== false) {
+    // Find the web middleware group
+    if (strpos(\$content, "'web' => [") !== false) {
+        // Replace the web middleware group to include our middleware at the beginning
+        \$content = preg_replace(
+            "/'web' => \\[\\s*/", 
+            "'web' => [\n            \\\\IngressMiddleware::class,\n            ", 
+            \$content, 
+            1
+        );
+        
+        // Write the modified content back to the file
+        file_put_contents(\$file, \$content);
+        echo "Middleware added to Kernel.php\n";
+    } else {
+        echo "Could not find the web middleware group in Kernel.php\n";
+    }
 } else {
-    echo "Could not find the web middleware group in Kernel.php\n";
+    echo "Could not find the middlewareGroups section in Kernel.php\n";
 }
 EOF
 
@@ -243,23 +248,19 @@ cat > /tmp/update_routes_provider.php << EOF
 \$content = file_get_contents(\$file);
 
 // Find the routes mapping section
-\$pattern = '/this->routes\(function \(\) {.*?}\);/s';
+\$pattern = '/function boot\\(\\).*?{/s';
 if (preg_match(\$pattern, \$content, \$matches)) {
-    // Make sure we include our ingress routes
-    \$replacement = str_replace(
-        'Route::middleware(\'web\')',
-        "// Load custom ingress routes\n            \$this->loadRoutesFrom(base_path('routes/ingress.php'));\n\n            Route::middleware('web')",
-        \$matches[0]
-    );
+    // Add code to load our custom routes in the boot method
+    \$replacement = \$matches[0] . "\n        // Load custom ingress routes\n        \$this->loadRoutesFrom(base_path('routes/ingress.php'));\n";
     
-    // Replace the routes mapping section
+    // Replace the boot method opening
     \$content = str_replace(\$matches[0], \$replacement, \$content);
     
     // Write the modified content back to the file
     file_put_contents(\$file, \$content);
     echo "Ingress routes added to RouteServiceProvider.php\n";
 } else {
-    echo "Could not find the routes mapping section in RouteServiceProvider.php\n";
+    echo "Could not find the boot method in RouteServiceProvider.php\n";
 }
 EOF
 
