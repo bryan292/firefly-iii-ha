@@ -12,15 +12,22 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
-# Create temp directories but don't try to change ownership
+# Create temp directories with proper permissions for nobody user
 mkdir -p /tmp/nginx/client_temp || true
 mkdir -p /tmp/nginx/proxy_temp || true
 mkdir -p /tmp/nginx/fastcgi_temp || true
 mkdir -p /tmp/nginx/uwsgi_temp || true
 mkdir -p /tmp/nginx/scgi_temp || true
 
-# Set permissions on temp directories - don't try to change ownership
+# Set very permissive permissions on temp directories
 chmod -R 777 /tmp/nginx || true
+
+# Also ensure /var/lib/nginx is writable
+mkdir -p /var/lib/nginx/logs || true
+chmod -R 777 /var/lib/nginx || true
+
+# Make web root writable
+chmod -R 777 /var/www || true
 
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf || true
