@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.65
+- Fixed PHP-FPM configuration to use nginx user instead of root
+- Added proper directory and file permissions for PHP-FPM
+- Improved error handling for file operations
+
 ## 1.0.64
 - Run Nginx and PHP-FPM as root user to avoid permission issues
 - Removed chown commands that were failing
