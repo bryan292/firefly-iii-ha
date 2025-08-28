@@ -4,51 +4,12 @@
 # Runs the Nginx daemon
 # ==============================================================================
 
-# Wait until PHP-FPM is running
-bashio::net.wait_for 9000 10 || bashio::log.warning "PHP-FPM not available after waiting"
+# Wait until PHP-FPM is available
+bashio::net.wait_for 9000
 
-# Make sure Nginx can access the logs directory
-mkdir -p /data/nginx/logs
-touch /data/nginx/logs/error.log
-touch /data/nginx/logs/access.log
-chmod 644 /data/nginx/logs/*.log
-chown -R nginx:nginx /data/nginx
+# Ensure proper permissions for temp directories
+chown -R nginx:nginx /tmp/nginx || true
 
-# Ensure PHP files are readable by nginx
-if [ -f /var/www/html/public/info.php ]; then
-    bashio::log.info "Setting up info.php file..."
-    chown nginx:nginx /var/www/html/public/info.php
-    chmod 644 /var/www/html/public/info.php
-fi
-
-if [ -f /var/www/html/public/test.php ]; then
-    bashio::log.info "Setting up test.php file..."
-    chown nginx:nginx /var/www/html/public/test.php
-    chmod 644 /var/www/html/public/test.php
-fi
-
-# Make sure public directory exists and is accessible
-mkdir -p /var/www/html/public
-chmod 755 /var/www/html/public
-chown nginx:nginx /var/www/html/public
-
-# Create a simple test file to verify web service
-echo "<html><body><h1>Nginx is running</h1></body></html>" > /var/www/html/public/nginx-test.html
-chmod 644 /var/www/html/public/nginx-test.html
-chown nginx:nginx /var/www/html/public/nginx-test.html
-
-# Check listening ports before starting Nginx
-bashio::log.info "Current listening ports:"
-netstat -tuln || ss -tuln || echo "No tools to check ports"
-
-# Check Nginx configuration
-bashio::log.info "Checking Nginx configuration..."
-nginx -t || bashio::log.warning "Nginx configuration test failed, but continuing anyway"
-
-# Kill any existing Nginx processes to ensure clean start
-pkill nginx || true
-sleep 1
-
-# Make the Nginx process more resistant to termination
+# Start Nginx
 bashio::log.info "Starting Nginx..."
 exec nginx -g "daemon off;"

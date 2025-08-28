@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.62
+- Fixed PHP-FPM log redirection to stdout/stderr
+- Redirected Nginx logs to process stdout
+- Added proper ownership for temp directories
+- Improved Nginx startup procedure
+
+## 1.0.61
+- Fixed enhanced error handling
+- Improved Nginx configuration
+
 ## 1.0.60
 - Fixed Nginx temp directory permissions issue
 - Fixed PHP-FPM user/group configuration

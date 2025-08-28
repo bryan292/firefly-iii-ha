@@ -7,6 +7,10 @@
 # Create php-fpm config with proper user settings
 mkdir -p /etc/php82/php-fpm.d
 cat > /etc/php82/php-fpm.d/www.conf << EOF
+[global]
+error_log = /proc/self/fd/2
+log_level = warning
+
 [www]
 user = nginx
 group = nginx
@@ -17,14 +21,18 @@ pm.start_servers = 3
 pm.min_spare_servers = 2
 pm.max_spare_servers = 5
 pm.max_requests = 500
+
+; Redirect logs to stdout/stderr
+access.log = /proc/self/fd/1
+php_admin_value[error_log] = /proc/self/fd/2
+php_admin_flag[log_errors] = on
+php_admin_value[memory_limit] = 512M
+php_admin_value[upload_max_filesize] = 50M
+php_admin_value[post_max_size] = 50M
+php_admin_value[max_execution_time] = 300
+php_admin_flag[display_errors] = off
+php_admin_flag[expose_php] = off
 EOF
-
-# Create necessary directories for php-fpm
-mkdir -p /var/log/php82
-touch /var/log/php82/error.log
-
-# Set proper ownership
-chown -R nginx:nginx /var/log/php82 || true
 
 # Start PHP-FPM
 bashio::log.info "Starting PHP-FPM..."

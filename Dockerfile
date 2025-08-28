@@ -55,7 +55,7 @@ RUN adduser -S -D -H -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx ngin
 
 # Create required directories and set permissions
 RUN mkdir -p ${FIREFLY_PATH} && \
-    mkdir -p /data/nginx/logs && \
+    mkdir -p /var/log/nginx && \
     mkdir -p /data/firefly-iii && \
     # Create directory structure with necessary permissions
     mkdir -p ${FIREFLY_PATH}/storage/app/public && \
@@ -72,8 +72,8 @@ RUN mkdir -p ${FIREFLY_PATH} && \
     mkdir -p /tmp/nginx/scgi_temp && \
     # Set very permissive permissions for add-on container environment
     chmod -R 777 ${FIREFLY_PATH} && \
-    chmod -R 777 /data && \
-    chmod -R 777 /tmp/nginx
+    chmod -R 777 /tmp/nginx && \
+    chmod -R 777 /var/log/nginx
 
 # Download and install a specific version of Firefly III
 RUN curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_VERSION}.tar.gz | tar xzf - -C /tmp/ && \
@@ -99,12 +99,11 @@ RUN cd ${FIREFLY_PATH} && \
 
 # Set ownership of the application to nginx user
 RUN chown -R nginx:nginx ${FIREFLY_PATH} && \
-    chown -R nginx:nginx /data && \
-    chown -R nginx:nginx /tmp/nginx
+    chown -R nginx:nginx /tmp/nginx && \
+    chown -R nginx:nginx /var/log/nginx
 
 # Set permissive permissions for all critical directories
 RUN chmod -R 777 ${FIREFLY_PATH} && \
-    chmod -R 777 /data && \
     chmod -R 777 /tmp/nginx
 
 # Copy root filesystem
