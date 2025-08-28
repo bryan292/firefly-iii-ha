@@ -1,81 +1,55 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Home Assistant Add-on: Firefly III
-# Runs the PHP-FPM daemon
+# Start PHP-FPM service
 # ==============================================================================
 
-# Create php-fpm config with explicit user/group settings
-mkdir -p /etc/php82/php-fpm.d
-cat > /etc/php82/php-fpm.d/www.conf << EOF
-[global]
-error_log = /proc/1/fd/2
-log_level = warning
-pid = /tmp/php-fpm.pid
+# Display PHP information for debugging
+echo "Available PHP binaries:"
+find /usr -name "php*" -type f 2>/dev/null || echo "No PHP binaries found"
+echo "PHP version: $(php -v 2>/dev/null || echo 'PHP not found')"
 
-[www]
-; Use www-data user and group which should exist in Alpine
-user = www-data
-group = www-data
-listen = 127.0.0.1:9000
-pm = dynamic
-pm.max_children = 10
-pm.start_servers = 3
-pm.min_spare_servers = 2
-pm.max_spare_servers = 5
-pm.max_requests = 500
+# Ensure permissions on critical directories for PHP
+find /var/www/html -type d -exec chmod 777 {} \; 2>/dev/null || true
+find /var/www/html -type f -exec chmod 666 {} \; 2>/dev/null || true
 
-; Security settings - disabling restrictions to make it work in container
-security.limit_extensions = 
-php_admin_flag[allow_url_fopen] = on
-
-; Redirect logs to stdout/stderr
-access.log = /proc/1/fd/1
-php_admin_value[error_log] = /proc/1/fd/2
-php_admin_flag[log_errors] = on
-php_admin_value[memory_limit] = 512M
-php_admin_value[upload_max_filesize] = 50M
-php_admin_value[post_max_size] = 50M
-php_admin_value[max_execution_time] = 300
-php_admin_flag[display_errors] = off
-php_admin_value[expose_php] = off
-
-; Fix for the invalid boolean value error
-php_admin_value[cgi.fix_pathinfo] = 0
-EOF
-
-# Make sure www-data user exists (should already exist in Alpine Linux)
-if ! id -u www-data > /dev/null 2>&1; then
-    addgroup -S www-data 2>/dev/null || true
-    adduser -S -D -H -h /var/www -s /sbin/nologin -G www-data -g www-data www-data 2>/dev/null || true
+# Try each possible PHP-FPM executable in order without -R flag
+if [ -f /usr/sbin/php-fpm8 ]; then
+    echo "Using /usr/sbin/php-fpm8"
+    exec /usr/sbin/php-fpm8 --nodaemonize --fpm-config /etc/php8/php-fpm.conf
+elif [ -f /usr/sbin/php-fpm7 ]; then
+    echo "Using /usr/sbin/php-fpm7"
+    exec /usr/sbin/php-fpm7 --nodaemonize --fpm-config /etc/php7/php-fpm.conf
+elif [ -f /usr/bin/php-fpm8 ]; then
+    echo "Using /usr/bin/php-fpm8"
+    exec /usr/bin/php-fpm8 --nodaemonize
+elif [ -f /usr/bin/php-fpm7 ]; then
+    echo "Using /usr/bin/php-fpm7"
+    exec /usr/bin/php-fpm7 --nodaemonize
+elif [ -f /usr/local/sbin/php-fpm ]; then
+    echo "Using /usr/local/sbin/php-fpm"
+    exec /usr/local/sbin/php-fpm --nodaemonize
+elif [ -f /usr/local/bin/php-fpm ]; then
+    echo "Using /usr/local/bin/php-fpm"
+    exec /usr/local/bin/php-fpm --nodaemonize
+elif command -v php-fpm8 >/dev/null 2>&1; then
+    echo "Using php-fpm8 from PATH"
+    exec php-fpm8 --nodaemonize
+elif command -v php-fpm7 >/dev/null 2>&1; then
+    echo "Using php-fpm7 from PATH"
+    exec php-fpm7 --nodaemonize
+elif command -v php-fpm >/dev/null 2>&1; then
+    echo "Using php-fpm from PATH"
+    exec php-fpm --nodaemonize
+else
+    echo "No PHP-FPM executable found!"
+    # As a last resort, try to create a simple PHP server
+    if command -v php >/dev/null 2>&1; then
+        echo "Attempting to start PHP built-in server as fallback"
+        cd /var/www/html/public || exit
+        exec php -S 0.0.0.0:9000
+    else
+        echo "No PHP executable found. Cannot start PHP service."
+        sleep 30
+        exit 1
+    fi
 fi
-
-# Create required directories
-directories=("/var/www/html/storage/logs" 
-             "/var/www/html/storage/app/public"
-             "/var/www/html/storage/framework/cache"
-             "/var/www/html/storage/framework/sessions"
-             "/var/www/html/storage/framework/views"
-             "/var/www/html/bootstrap/cache")
-
-# Ensure directories exist with permissive permissions
-for dir in "${directories[@]}"; do
-    mkdir -p "$dir" || true
-    chmod -R 777 "$dir" || true
-done
-
-# Ensure Laravel log file exists with permissive permissions
-touch /var/www/html/storage/logs/laravel.log || true
-chmod 666 /var/www/html/storage/logs/laravel.log || true
-
-# Create the PHP-FPM tmp directories with permissive permissions
-mkdir -p /tmp/php-fpm || true
-chmod -R 777 /tmp/php-fpm || true
-
-# Set ownership of the web root to www-data
-chown -R www-data:www-data /var/www/html || true
-
-# Start PHP-FPM with explicit config file
-bashio::log.info "Starting PHP-FPM..."
-
-# Run PHP-FPM with explicit config
-exec php-fpm82 -F -y /etc/php82/php-fpm.d/www.conf -c /etc/php82/php.ini
