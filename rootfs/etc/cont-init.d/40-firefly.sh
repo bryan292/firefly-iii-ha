@@ -14,6 +14,7 @@ declare log_level
 declare wait_timeout
 declare app_key
 declare app_url
+declare middleware
 
 # Make sure persistent data directory exists
 mkdir -p /data/firefly-iii
