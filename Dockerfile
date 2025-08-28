@@ -50,9 +50,6 @@ RUN apk update && \
         jq \
         git
 
-# Add nginx user to fix permission issues
-RUN adduser -S -D -H -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true
-
 # Create required directories and set permissions
 RUN mkdir -p ${FIREFLY_PATH} && \
     mkdir -p /var/log/nginx && \
@@ -96,11 +93,6 @@ RUN cd ${FIREFLY_PATH} && \
 # Fix bootstrap/app.php to handle missing bcscale
 RUN cd ${FIREFLY_PATH} && \
     sed -i '35s/bcscale(12)/function_exists("bcscale") ? bcscale(12) : null/' bootstrap/app.php || true
-
-# Set ownership of the application to nginx user
-RUN chown -R nginx:nginx ${FIREFLY_PATH} && \
-    chown -R nginx:nginx /tmp/nginx && \
-    chown -R nginx:nginx /var/log/nginx
 
 # Set permissive permissions for all critical directories
 RUN chmod -R 777 ${FIREFLY_PATH} && \

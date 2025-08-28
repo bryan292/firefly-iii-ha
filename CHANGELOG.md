@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.64
+- Run Nginx and PHP-FPM as root user to avoid permission issues
+- Removed chown commands that were failing
+- Updated Nginx configuration to use user directive
+
+## 1.0.63
+- Enhanced ingress configuration
+- Added additional HTTP headers for improved security
+- Optimized Nginx configuration for better performance
+- Added better error handling for file operations
+
 ## 1.0.62
 - Fixed PHP-FPM log redirection to stdout/stderr
 - Redirected Nginx logs to process stdout
