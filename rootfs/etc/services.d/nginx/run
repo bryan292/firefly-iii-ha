@@ -5,7 +5,7 @@
 # ==============================================================================
 
 # Wait until PHP-FPM is running
-bashio::net.wait_for 9000
+bashio::net.wait_for 9000 10 || bashio::log.warning "PHP-FPM not available after waiting"
 
 # Make sure Nginx can access the logs directory
 mkdir -p /data/nginx/logs
@@ -27,9 +27,28 @@ if [ -f /var/www/html/public/test.php ]; then
     chmod 644 /var/www/html/public/test.php
 fi
 
+# Make sure public directory exists and is accessible
+mkdir -p /var/www/html/public
+chmod 755 /var/www/html/public
+chown nginx:nginx /var/www/html/public
+
+# Create a simple test file to verify web service
+echo "<html><body><h1>Nginx is running</h1></body></html>" > /var/www/html/public/nginx-test.html
+chmod 644 /var/www/html/public/nginx-test.html
+chown nginx:nginx /var/www/html/public/nginx-test.html
+
+# Check listening ports before starting Nginx
+bashio::log.info "Current listening ports:"
+netstat -tuln || ss -tuln || echo "No tools to check ports"
+
 # Check Nginx configuration
 bashio::log.info "Checking Nginx configuration..."
-nginx -t || bashio::log.warning "Nginx configuration test failed"
+nginx -t || bashio::log.warning "Nginx configuration test failed, but continuing anyway"
 
-bashio::log.info "Starting Nginx..."
-exec nginx -g "daemon off;"
+# Kill any existing Nginx processes to ensure clean start
+pkill nginx || true
+sleep 1
+
+bashio::log.info "Starting Nginx with debug logging..."
+# Start nginx in foreground mode with stdout logging
+exec nginx -g "daemon off; error_log /dev/stdout info;"
