@@ -12,7 +12,7 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
-# Create temp directories with proper structure
+# Create temp directories with proper structure in /tmp (which is writable)
 mkdir -p /tmp/client_temp/0 /tmp/client_temp/1/1 /tmp/client_temp/1/2
 mkdir -p /tmp/proxy_temp/0 /tmp/proxy_temp/1/1 /tmp/proxy_temp/1/2
 mkdir -p /tmp/fastcgi_temp/0 /tmp/fastcgi_temp/1/1 /tmp/fastcgi_temp/1/2
@@ -22,12 +22,8 @@ mkdir -p /tmp/scgi_temp/0 /tmp/scgi_temp/1/1 /tmp/scgi_temp/1/2
 # Create needed directories for logs - using /tmp instead
 mkdir -p /tmp/nginx/logs
 
-# Make sure Nginx can write to these directories
+# Make sure Nginx can write to these directories in /tmp
 chmod -R 777 /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp /tmp/nginx
-
-# Add run directory for Nginx where it expects to find some files
-mkdir -p /var/run/nginx
-chmod 777 /var/run/nginx
 
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf
@@ -143,14 +139,9 @@ server {
 }
 EOF
 
-# Create missing directories that Nginx might expect
-mkdir -p /var/lib/nginx/logs
-chmod 777 /var/lib/nginx/logs
-
-# Make the site directory fully accessible
-find /var/www/html -type d -exec chmod 777 {} \; 2>/dev/null || true
-find /var/www/html -type f -exec chmod 666 {} \; 2>/dev/null || true
-chmod -R 777 /var/www/html/storage /var/www/html/bootstrap 2>/dev/null || true
+# Try to make the Firefly III directory accessible but don't fail if not permitted
+chmod -R 777 /var/www/html/storage 2>/dev/null || true
+chmod -R 777 /var/www/html/bootstrap 2>/dev/null || true
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."
