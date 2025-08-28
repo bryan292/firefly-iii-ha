@@ -326,10 +326,10 @@ EOF
 
 php /tmp/update_routes_provider.php
 
-# Create fix_redirects.php directly without using echo or heredoc
-# This avoids bash variable expansion issues
-cat > /tmp/fix_redirects.php << 'ENDPHP'
-<?php
+# Instead of using cat with a heredoc, write the PHP script directly to a file
+# to prevent bash variable expansion issues
+# This avoids the "unbound variable" error with middleware
+printf '<?php
 $file = "/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php";
 if (file_exists($file)) {
     $content = file_get_contents($file);
@@ -342,10 +342,9 @@ if (file_exists($file)) {
     if (preg_match($pattern, $content)) {
         $modified = preg_replace($pattern, $replacement, $content);
         file_put_contents($file, $modified);
-        echo "Fixed RedirectIfAuthenticated middleware\n";
+        echo "Fixed RedirectIfAuthenticated middleware\\n";
     }
-}
-ENDPHP
+}' > /tmp/fix_redirects.php
 
 php /tmp/fix_redirects.php
 
