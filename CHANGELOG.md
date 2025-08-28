@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.67
+- Fixed permission issues by running all services as root
+- Updated Nginx and PHP-FPM configuration to use root user
+- Removed problematic chown operations that caused errors
+- Fixed temporary directory permissions
+- Added better error handling for file operations
+
+## 1.0.66
+- Rolled back to using root user for PHP-FPM to fix permission issues
+- Removed ownership change operations that cause errors
+- Updated Nginx configuration to run as root
+- Fixed temporary directory permissions without ownership changes
+
 ## 1.0.65
 - Fixed PHP-FPM configuration to use nginx user instead of root
 - Added proper directory and file permissions for PHP-FPM

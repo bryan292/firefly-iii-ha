@@ -12,9 +12,9 @@ error_log = /proc/self/fd/2
 log_level = warning
 
 [www]
-; Use nginx user instead of root
-user = nginx
-group = nginx
+; Run as root since we can't use user switching in the container
+user = root
+group = root
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -36,6 +36,7 @@ php_admin_flag[expose_php] = off
 EOF
 
 # Create required directories with proper permissions
+# Don't attempt to change ownership, just ensure directories exist
 directories=("/var/www/html/storage/logs" 
              "/var/www/html/storage/app/public"
              "/var/www/html/storage/framework/cache"
@@ -43,20 +44,13 @@ directories=("/var/www/html/storage/logs"
              "/var/www/html/storage/framework/views"
              "/var/www/html/bootstrap/cache")
 
-# Ensure the nginx user exists before setting permissions
-if id -u nginx >/dev/null 2>&1; then
-    # Ensure directories exist and set permissions
-    for dir in "${directories[@]}"; do
-        mkdir -p "$dir" || true
-        chown -R nginx:nginx "$dir" || true
-        chmod -R 775 "$dir" || true
-    done
-    
-    # Ensure the Laravel log file exists with proper permissions
-    touch /var/www/html/storage/logs/laravel.log || true
-    chown nginx:nginx /var/www/html/storage/logs/laravel.log || true
-    chmod 664 /var/www/html/storage/logs/laravel.log || true
-fi
+# Ensure directories exist but don't try to change permissions
+for dir in "${directories[@]}"; do
+    mkdir -p "$dir" || true
+done
+
+# Ensure the Laravel log file exists
+touch /var/www/html/storage/logs/laravel.log || true
 
 # Start PHP-FPM
 bashio::log.info "Starting PHP-FPM..."

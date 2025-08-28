@@ -7,8 +7,8 @@
 # Wait until PHP-FPM is available
 bashio::net.wait_for 9000
 
-# Ensure proper permissions for temp directories
-chown -R nginx:nginx /tmp/nginx || true
+# Ensure proper permissions for temp directories without changing ownership
+chmod -R 777 /tmp/nginx || true
 
 # Start Nginx
 bashio::log.info "Starting Nginx..."
