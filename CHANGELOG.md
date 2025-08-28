@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.73
+- Fixed PHP-FPM configuration error with cgi.fix_pathinfo
+- Changed nginx to run as root to fix permission issues
+- Updated temp directory handling to avoid permission errors
+- Improved PHP configuration with correct boolean values
+
 ## 1.0.72
 - Changed PHP-FPM and Nginx to run as nobody user
 - Set fully permissive permissions on directories to avoid permission issues

@@ -34,9 +34,9 @@ php_admin_value[max_execution_time] = 300
 php_admin_flag[display_errors] = off
 php_admin_flag[expose_php] = off
 
-; Disable user checks since we're in a container
-php_admin_flag[cgi.fix_pathinfo] = 0
-php_flag[display_errors] = off
+; Fix for the invalid boolean value error
+php_admin_value[cgi.fix_pathinfo] = 0
+php_value[display_errors] = off
 EOF
 
 # Create required directories

@@ -12,7 +12,7 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
-# Create temp directories with wide permissions
+# Create temp directories with wide permissions but avoid chown
 mkdir -p /tmp/client_temp || true
 mkdir -p /tmp/proxy_temp || true
 mkdir -p /tmp/fastcgi_temp || true
@@ -24,14 +24,14 @@ chmod -R 777 /tmp/fastcgi_temp || true
 chmod -R 777 /tmp/uwsgi_temp || true
 chmod -R 777 /tmp/scgi_temp || true
 
-# Make web root writable by nobody user
+# Make web root writable
 chmod -R 777 /var/www || true
 
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf || true
 rm -f /etc/nginx/http.d/direct.conf || true
 
-# Create a simple nginx config in http.d that doesn't use chown
+# Create a simple nginx config in http.d with no ownership operations
 cat > /etc/nginx/http.d/ingress.conf << EOF
 server {
     listen 8099 default_server;
