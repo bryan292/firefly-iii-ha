@@ -326,8 +326,10 @@ EOF
 
 php /tmp/update_routes_provider.php
 
-# Create a direct PHP file for fixing redirects rather than using a heredoc
-echo '<?php
+# Create fix_redirects.php directly without using echo or heredoc
+# This avoids bash variable expansion issues
+cat > /tmp/fix_redirects.php << 'ENDPHP'
+<?php
 $file = "/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php";
 if (file_exists($file)) {
     $content = file_get_contents($file);
@@ -342,7 +344,8 @@ if (file_exists($file)) {
         file_put_contents($file, $modified);
         echo "Fixed RedirectIfAuthenticated middleware\n";
     }
-}' > /tmp/fix_redirects.php
+}
+ENDPHP
 
 php /tmp/fix_redirects.php
 
