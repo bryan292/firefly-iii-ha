@@ -29,6 +29,12 @@ chmod -R 777 /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp 
 rm -f /etc/nginx/http.d/default.conf
 rm -f /etc/nginx/http.d/direct.conf
 
+# Create a symbolic link for Nginx error log to redirect to stdout
+if [ -d "/var/lib/nginx/logs" ]; then
+    rm -f /var/lib/nginx/logs/error.log 2>/dev/null || true
+    ln -sf /proc/1/fd/2 /var/lib/nginx/logs/error.log 2>/dev/null || true
+fi
+
 # Create a simple nginx config in http.d with no ownership operations
 cat > /etc/nginx/http.d/ingress.conf << EOF
 server {
@@ -142,6 +148,7 @@ EOF
 # Try to make the Firefly III directory accessible but don't fail if not permitted
 chmod -R 777 /var/www/html/storage 2>/dev/null || true
 chmod -R 777 /var/www/html/bootstrap 2>/dev/null || true
+chmod -R 777 /var/www/html/bootstrap/cache 2>/dev/null || true
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."

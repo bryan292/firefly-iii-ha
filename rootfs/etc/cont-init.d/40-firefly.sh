@@ -85,6 +85,35 @@ chmod 666 /var/www/html/storage/logs/laravel.log 2>/dev/null || true
 if [ -f /etc/php8/php-fpm.d/www.conf ] && [ -w /etc/php8/php-fpm.d/www.conf ]; then
     sed -i 's/user = nobody/user = root/g' /etc/php8/php-fpm.d/www.conf
     sed -i 's/group = nobody/group = root/g' /etc/php8/php-fpm.d/www.conf
+    # Also modify listen.owner and listen.group
+    sed -i 's/listen.owner = nobody/listen.owner = root/g' /etc/php8/php-fpm.d/www.conf
+    sed -i 's/listen.group = nobody/listen.group = root/g' /etc/php8/php-fpm.d/www.conf
+fi
+
+# Create a custom PHP-FPM pool configuration file if we can't modify the existing one
+if [ ! -w /etc/php8/php-fpm.d/www.conf ]; then
+    mkdir -p /tmp/php-fpm.d
+    cat > /tmp/php-fpm.d/firefly.conf << EOF
+[firefly]
+user = root
+group = root
+listen = 127.0.0.1:9000
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+php_admin_value[memory_limit] = 256M
+php_admin_value[upload_max_filesize] = 100M
+php_admin_value[post_max_size] = 100M
+php_admin_value[max_execution_time] = 300
+php_admin_value[max_input_time] = 300
+php_admin_value[date.timezone] = ${timezone}
+EOF
+    # Then create a symlink to this file if possible
+    if [ -d /etc/php8/php-fpm.d ]; then
+        ln -sf /tmp/php-fpm.d/firefly.conf /etc/php8/php-fpm.d/firefly.conf 2>/dev/null || true
+    fi
 fi
 
 # Setup environment file
@@ -488,6 +517,29 @@ echo 'Request URI: ' . \$_SERVER['REQUEST_URI'] . "\n";
 echo 'PHP Version: ' . phpversion() . "\n";
 echo '</pre>';
 EOT
+
+# Create a custom PHP-FPM service file in case the default doesn't work
+cat > /tmp/php-fpm-custom-run << EOT
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start PHP-FPM service
+# ==============================================================================
+
+# Run PHP-FPM as root to avoid permission issues
+if [ -f /usr/sbin/php-fpm8 ]; then
+    exec /usr/sbin/php-fpm8 --nodaemonize --fpm-config /etc/php8/php-fpm.conf -R
+elif [ -f /usr/sbin/php-fpm7 ]; then
+    exec /usr/sbin/php-fpm7 --nodaemonize --fpm-config /etc/php7/php-fpm.conf -R
+else
+    exec php-fpm --nodaemonize -R
+fi
+EOT
+
+# Try to make the custom run script executable and replace the original
+chmod +x /tmp/php-fpm-custom-run
+if [ -f /etc/services.d/php-fpm/run ]; then
+    cp /tmp/php-fpm-custom-run /etc/services.d/php-fpm/run 2>/dev/null || true
+fi
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"
