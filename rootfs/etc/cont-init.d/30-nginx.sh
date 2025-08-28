@@ -144,11 +144,9 @@ chmod -R 777 /var/www/html/storage 2>/dev/null || true
 chmod -R 777 /var/www/html/bootstrap 2>/dev/null || true
 chmod -R 777 /var/www/html/bootstrap/cache 2>/dev/null || true
 
-# Make sure nginx user can access the directories
-if id -u nginx >/dev/null 2>&1; then
-    # Set permissions for nginx user if it exists
-    chown -R nginx:nginx /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp /tmp/nginx 2>/dev/null || true
-fi
+# Skip chown operations as they're causing permission issues
+# Instead, make the temporary directories accessible to everyone
+chmod -R 777 /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp /tmp/nginx
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."

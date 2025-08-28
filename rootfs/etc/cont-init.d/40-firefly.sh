@@ -103,22 +103,20 @@ bashio::log.info "PHP version: $(php -v 2>/dev/null || echo 'PHP not found')"
 bashio::log.info "Available PHP binaries:"
 find /usr -name "php*" -type f 2>/dev/null || echo "No PHP binaries found"
 
-# Get PHP-FPM user
+# Get PHP-FPM user - use nobody as default
 PHP_FPM_USER="nobody"
-if id -u www-data >/dev/null 2>&1; then
-    PHP_FPM_USER="www-data"
-elif id -u nginx >/dev/null 2>&1; then
-    PHP_FPM_USER="nginx"
+if id -u nobody >/dev/null 2>&1; then
+    PHP_FPM_USER="nobody"
 fi
 bashio::log.info "Using PHP-FPM user: ${PHP_FPM_USER}"
 
-# Fix PHP-FPM config to run as www-data or nginx if file exists and is writable
+# Fix PHP-FPM config to run as nobody if file exists and is writable
 if [ -f /etc/php8/php-fpm.d/www.conf ] && [ -w /etc/php8/php-fpm.d/www.conf ]; then
-    sed -i "s/user = nobody/user = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
-    sed -i "s/group = nobody/group = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
+    sed -i "s/user = .*/user = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
+    sed -i "s/group = .*/group = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
     # Also modify listen.owner and listen.group
-    sed -i "s/listen.owner = nobody/listen.owner = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
-    sed -i "s/listen.group = nobody/listen.group = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
+    sed -i "s/listen.owner = .*/listen.owner = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
+    sed -i "s/listen.group = .*/listen.group = ${PHP_FPM_USER}/g" /etc/php8/php-fpm.d/www.conf
 fi
 
 # Create a custom PHP-FPM pool configuration file if we can't modify the existing one
@@ -325,6 +323,9 @@ EOF
 chmod 666 /var/www/html/app/Http/Controllers/IngressController.php 2>/dev/null || true
 chmod 666 /var/www/html/routes/ingress.php 2>/dev/null || true
 chmod 666 /var/www/html/app/Http/Middleware/${middleware}.php 2>/dev/null || true
+chmod 777 /var/www/html/app/Http/Controllers 2>/dev/null || true
+chmod 777 /var/www/html/routes 2>/dev/null || true 
+chmod 777 /var/www/html/app/Http/Middleware 2>/dev/null || true
 
 # Fix the Kernel.php modification script to avoid undefined variable warning
 cat > /tmp/append_kernel.php << EOF
@@ -561,7 +562,7 @@ echo "Available PHP binaries:"
 find /usr -name "php*" -type f 2>/dev/null || echo "No PHP binaries found"
 echo "PHP version: \$(php -v 2>/dev/null || echo 'PHP not found')"
 
-# Try each possible PHP-FPM executable in order
+# Try each possible PHP-FPM executable in order without -R flag
 if [ -f /usr/sbin/php-fpm8 ]; then
     echo "Using /usr/sbin/php-fpm8"
     exec /usr/sbin/php-fpm8 --nodaemonize --fpm-config /etc/php8/php-fpm.conf
