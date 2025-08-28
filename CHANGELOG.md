@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.69
+- Fixed Nginx configuration to avoid /var/lib/nginx permission issues
+- Redirected all logs to stdout/stderr instead of files
+- Removed unnecessary file permission operations
+- Updated temp directory paths
+
 ## 1.0.68
 - Changed PHP-FPM and Nginx to run as nobody user instead of root
 - Added more permissive file permissions throughout the filesystem

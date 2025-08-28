@@ -22,9 +22,8 @@ mkdir -p /tmp/nginx/scgi_temp || true
 # Set very permissive permissions on temp directories
 chmod -R 777 /tmp/nginx || true
 
-# Also ensure /var/lib/nginx is writable
-mkdir -p /var/lib/nginx/logs || true
-chmod -R 777 /var/lib/nginx || true
+# Don't try to create or modify /var/lib/nginx as it appears to be restricted
+# We'll redirect logs to stdout/stderr instead
 
 # Make web root writable
 chmod -R 777 /var/www || true
