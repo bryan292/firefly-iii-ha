@@ -19,12 +19,64 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
+# Create temp directories
+mkdir -p /tmp/nginx/client_temp || true
+mkdir -p /tmp/nginx/proxy_temp || true
+mkdir -p /tmp/nginx/fastcgi_temp || true
+mkdir -p /tmp/nginx/uwsgi_temp || true
+mkdir -p /tmp/nginx/scgi_temp || true
+
 # Remove any existing configuration to avoid conflicts
 rm -f /etc/nginx/http.d/default.conf 2>/dev/null || true
 rm -f /etc/nginx/http.d/direct.conf 2>/dev/null || true
 rm -f /etc/nginx/http.d/ingress.conf 2>/dev/null || true
 
 # Create a minimal nginx configuration directly
+cat > /etc/nginx/nginx.conf << EOF
+worker_processes auto;
+pid /var/run/nginx.pid;
+error_log /proc/1/fd/1 info;
+include /etc/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Disable temp file ownership checks that cause permission errors
+    disable_symlinks off;
+    
+    # Use temp directories with no specific ownership settings
+    client_body_temp_path /tmp/nginx/client_temp;
+    proxy_temp_path /tmp/nginx/proxy_temp;
+    fastcgi_temp_path /tmp/nginx/fastcgi_temp;
+    uwsgi_temp_path /tmp/nginx/uwsgi_temp;
+    scgi_temp_path /tmp/nginx/scgi_temp;
+
+    # Basic Settings
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    server_tokens off;
+    
+    # Logging Settings
+    access_log /proc/1/fd/1 combined;
+    
+    # Gzip Settings
+    gzip on;
+    gzip_disable "msie6";
+    
+    # Virtual Host Configs
+    include /etc/nginx/http.d/*.conf;
+}
+EOF
+
+# Create the Nginx ingress config
 cat > /etc/nginx/http.d/ingress.conf << EOF
 server {
     listen 8099 default_server;

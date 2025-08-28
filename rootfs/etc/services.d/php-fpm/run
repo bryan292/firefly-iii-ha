@@ -1,8 +1,31 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
 # Home Assistant Add-on: Firefly III
-# Runs the PHP-FPM service
+# Runs the PHP-FPM daemon
 # ==============================================================================
 
+# Create php-fpm config with proper user settings
+mkdir -p /etc/php82/php-fpm.d
+cat > /etc/php82/php-fpm.d/www.conf << EOF
+[www]
+user = nginx
+group = nginx
+listen = 127.0.0.1:9000
+pm = dynamic
+pm.max_children = 10
+pm.start_servers = 3
+pm.min_spare_servers = 2
+pm.max_spare_servers = 5
+pm.max_requests = 500
+EOF
+
+# Create necessary directories for php-fpm
+mkdir -p /var/log/php82
+touch /var/log/php82/error.log
+
+# Set proper ownership
+chown -R nginx:nginx /var/log/php82 || true
+
+# Start PHP-FPM
 bashio::log.info "Starting PHP-FPM..."
-exec php-fpm82 -F
+exec php-fpm82 --nodaemonize --fpm-config /etc/php82/php-fpm.d/www.conf

@@ -50,6 +50,9 @@ RUN apk update && \
         jq \
         git
 
+# Add nginx user to fix permission issues
+RUN adduser -S -D -H -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true
+
 # Create required directories and set permissions
 RUN mkdir -p ${FIREFLY_PATH} && \
     mkdir -p /data/nginx/logs && \
@@ -61,9 +64,16 @@ RUN mkdir -p ${FIREFLY_PATH} && \
     mkdir -p ${FIREFLY_PATH}/storage/framework/views && \
     mkdir -p ${FIREFLY_PATH}/storage/logs && \
     mkdir -p ${FIREFLY_PATH}/bootstrap/cache && \
+    # Create Nginx temp directories
+    mkdir -p /tmp/nginx/client_temp && \
+    mkdir -p /tmp/nginx/proxy_temp && \
+    mkdir -p /tmp/nginx/fastcgi_temp && \
+    mkdir -p /tmp/nginx/uwsgi_temp && \
+    mkdir -p /tmp/nginx/scgi_temp && \
     # Set very permissive permissions for add-on container environment
     chmod -R 777 ${FIREFLY_PATH} && \
-    chmod -R 777 /data
+    chmod -R 777 /data && \
+    chmod -R 777 /tmp/nginx
 
 # Download and install a specific version of Firefly III
 RUN curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_VERSION}.tar.gz | tar xzf - -C /tmp/ && \
@@ -74,9 +84,7 @@ RUN curl -SL https://github.com/firefly-iii/firefly-iii/archive/v${FIREFLY_III_V
 RUN ln -sf /usr/bin/php82 /usr/bin/php
 
 # Set PHP configuration 
-RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini && \
-    echo "user = root" >> /etc/php82/php-fpm.d/www.conf && \
-    echo "group = root" >> /etc/php82/php-fpm.d/www.conf
+RUN echo "memory_limit = 512M" > /etc/php82/conf.d/99-firefly.ini
 
 # Install dependencies with ignore-platform-reqs to avoid extension issues
 RUN cd ${FIREFLY_PATH} && \
@@ -89,57 +97,15 @@ RUN cd ${FIREFLY_PATH} && \
 RUN cd ${FIREFLY_PATH} && \
     sed -i '35s/bcscale(12)/function_exists("bcscale") ? bcscale(12) : null/' bootstrap/app.php || true
 
-# Prepare Nginx configuration sample
-RUN mkdir -p /etc/nginx/http.d && \
-    cat > /etc/nginx/http.d/ingress.conf.sample << 'EOT'
-server {
-    listen 8099 default_server;
-    listen 8080 default_server;
-    
-    root /var/www/html/public;
-    index index.php;
-
-    # Required for ingress
-    absolute_redirect off;
-    port_in_redirect off;
-
-    client_max_body_size 100M;
-
-    # Error and access logs
-    error_log /proc/1/fd/1 info;
-    access_log /proc/1/fd/1 combined;
-
-    # Laravel pretty URLs
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    # Handle PHP files
-    location ~ \.php$ {
-        try_files $uri =404;
-        
-        # Split path info from path
-        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
-        
-        # Connect to php-fpm via TCP socket
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_index index.php;
-        
-        # Include standard fastcgi parameters
-        include fastcgi_params;
-        
-        # Ensure document root is properly set
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info if_not_empty;
-    }
-}
-EOT
+# Set ownership of the application to nginx user
+RUN chown -R nginx:nginx ${FIREFLY_PATH} && \
+    chown -R nginx:nginx /data && \
+    chown -R nginx:nginx /tmp/nginx
 
 # Set permissive permissions for all critical directories
 RUN chmod -R 777 ${FIREFLY_PATH} && \
     chmod -R 777 /data && \
-    chmod -R 777 /etc/nginx && \
-    chmod 777 /etc/nginx/http.d/ingress.conf.sample
+    chmod -R 777 /tmp/nginx
 
 # Copy root filesystem
 COPY rootfs /

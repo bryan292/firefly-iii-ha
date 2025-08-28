@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.60
+- Fixed Nginx temp directory permissions issue
+- Fixed PHP-FPM user/group configuration
+- Updated Nginx configuration to avoid ownership checks
+- Added custom PHP-FPM configuration file
+
 ## 1.0.59
 - Fixed permission issues by removing directory/file chmod operations
 - Modified Dockerfile to set permissions during build
