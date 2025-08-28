@@ -135,13 +135,85 @@ MAP_DEFAULT_ZOOM=6
 TRUSTED_PROXIES=**
 SANCTUM_STATEFUL_DOMAINS=*
 SESSION_DOMAIN=*
+FORCE_ROOT_URL=${ingress_entry}
+DISABLE_AUTHENTICATE_GUARD=true
+SINGLE_USER_MODE=true
 
 # Authentication settings
 AUTHENTICATION_GUARD=web
 AUTHENTICATION_GUARD_HEADER=REMOTE_USER
+
+# Custom for ingress
+URL_FORCE_HTTPS=false
+HOME_ASSISTANT_INGRESS=true
 EOF
 
 cd /var/www/html || exit
+
+# Create a middleware to fix redirects
+mkdir -p /var/www/html/app/Http/Middleware
+cat > /var/www/html/app/Http/Middleware/IngressMiddleware.php << EOF
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
+
+class IngressMiddleware
+{
+    public function handle(Request \$request, Closure \$next)
+    {
+        // Get base path from environment
+        \$ingressUrl = env('ASSET_URL', '');
+        
+        // Set URL parameters for all generated URLs in the application
+        if (!empty(\$ingressUrl)) {
+            URL::forceRootUrl(rtrim(env('APP_URL'), '/'));
+            URL::formatPathUsing(function (\$path) use (\$ingressUrl) {
+                if (empty(\$path) || \$path == '/') {
+                    return rtrim(\$ingressUrl, '/');
+                }
+                return rtrim(\$ingressUrl, '/') . '/' . ltrim(\$path, '/');
+            });
+        }
+        
+        // Disable redirects to /login or /register
+        if (\$request->is('login') || \$request->is('register')) {
+            // Already authenticated, go to home
+            if (auth()->check()) {
+                return redirect()->to(\$ingressUrl);
+            }
+        }
+        
+        return \$next(\$request);
+    }
+}
+EOF
+
+# Register the middleware in kernel.php
+# We need to add our middleware to the web group
+cat > /tmp/append_kernel.php << EOF
+<?php
+\$file = '/var/www/html/app/Http/Kernel.php';
+\$content = file_get_contents(\$file);
+
+// Add the middleware to the use statements
+\$pattern = '/namespace App\\\\Http;/';
+\$replacement = "namespace App\\Http;\n\nuse App\\Http\\Middleware\\IngressMiddleware;";
+\$content = preg_replace(\$pattern, \$replacement, \$content);
+
+// Add the middleware to the web group
+\$pattern = '/protected \$middlewareGroups = \[\s*\'web\' => \[/';
+\$replacement = "protected \$middlewareGroups = [\n        'web' => [\n            \\IngressMiddleware::class,";
+\$content = preg_replace(\$pattern, \$replacement, \$content);
+
+file_put_contents(\$file, \$content);
+echo "Middleware added to Kernel.php\n";
+EOF
+
+php /tmp/append_kernel.php
 
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."
