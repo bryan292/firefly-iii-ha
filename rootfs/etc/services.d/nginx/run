@@ -27,10 +27,6 @@ if [ -f /var/www/html/public/test.php ]; then
     chmod 644 /var/www/html/public/test.php
 fi
 
-# Check PHP-FPM configuration
-bashio::log.info "Checking PHP-FPM configuration..."
-php-fpm8 -t || bashio::log.warning "PHP-FPM configuration test failed"
-
 # Check Nginx configuration
 bashio::log.info "Checking Nginx configuration..."
 nginx -t || bashio::log.warning "Nginx configuration test failed"

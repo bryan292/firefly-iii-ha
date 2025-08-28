@@ -24,15 +24,15 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Disable search engine indexing
-    add_header X-Robots-Tag "none" always;
+    add_header X-Robots-Tag none;
     
     # Set referrer policy
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade";
     
     # Enable cross-origin requests for Home Assistant ingress
-    add_header Access-Control-Allow-Origin "*" always;
-    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE, HEAD" always;
-    add_header Access-Control-Allow-Headers "X-Requested-With, Content-Type, Authorization, Accept" always;
+    add_header Access-Control-Allow-Origin "*";
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE, HEAD";
+    add_header Access-Control-Allow-Headers "X-Requested-With, Content-Type, Authorization, Accept";
 
     # Enable gzip compression
     gzip on;
@@ -43,28 +43,33 @@ server {
 
     # Laravel pretty URLs
     location / {
-        try_files $uri $uri/ /index.php$is_args$args;
+        try_files $uri $uri/ /index.php?$query_string;
     }
 
-    # Handle PHP files - critical for executing not downloading PHP
-    location ~ [^/]\.php(/|$) {
-        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
-        if (!-f $document_root$fastcgi_script_name) {
-            return 404;
-        }
+    # Special location for test.php
+    location = /test.php {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    # Special location for info.php
+    location = /info.php {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    # Handle PHP files
+    location ~ \.php$ {
+        include fastcgi_params;
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
-        include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
         fastcgi_param HTTP_X_FORWARDED_HOST $http_host;
         fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
         fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
-        fastcgi_buffers 16 16k;
-        fastcgi_buffer_size 32k;
-        fastcgi_connect_timeout 300;
-        fastcgi_send_timeout 300;
-        fastcgi_read_timeout 300;
     }
     
     # Handle assets with proper caching

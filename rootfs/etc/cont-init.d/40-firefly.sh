@@ -50,17 +50,12 @@ else
 fi
 
 # For Home Assistant integration, we need the proper URLs
-ingress_entry=$(bashio::addon.ingress_entry)
+# Using a real http URL is required for the application to function properly
 app_url="http://localhost:8080"
 
-# Get the Home Assistant API URL
-if bashio::supervisor.ping; then
-    bashio::log.info "Getting Home Assistant URL from Supervisor..."
-    app_url=$(bashio::addon.ingress_url)
-fi
-
+# Log information about the URLs
 bashio::log.info "Using app URL: ${app_url}"
-bashio::log.info "Ingress entry: ${ingress_entry}"
+bashio::log.info "Ingress entry: $(bashio::addon.ingress_entry)"
 
 # Remove index.html if exists (it would take precedence over index.php)
 if [ -f /var/www/html/public/index.html ]; then
@@ -257,7 +252,23 @@ chown -R nginx:nginx /var/www/html
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
 
-# Create additional PHP test files for debugging
+# Create a simple standalone HTML file to verify the web server is working
+cat > /var/www/html/public/hello.html << EOT
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firefly III Test Page</title>
+</head>
+<body>
+    <h1>Hello from Firefly III</h1>
+    <p>If you can see this page, the Nginx web server is working correctly.</p>
+    <p>Now try the <a href="info.php">PHP info page</a> or <a href="test.php">test PHP page</a>.</p>
+</body>
+</html>
+EOT
+chmod 644 /var/www/html/public/hello.html
+
+# Create PHP test files for debugging
 cat > /var/www/html/public/info.php << EOT
 <?php
 phpinfo();
@@ -267,8 +278,13 @@ chmod 644 /var/www/html/public/info.php
 cat > /var/www/html/public/test.php << EOT
 <?php
 echo '<h1>PHP Test Page</h1>';
-echo '<p>If you can see this, PHP is working correctly.</p>';
+echo '<p>If you can see this, PHP is working correctly with Nginx.</p>';
 echo '<p>Server time: ' . date('Y-m-d H:i:s') . '</p>';
+echo '<pre>';
+echo 'Document Root: ' . $_SERVER['DOCUMENT_ROOT'] . "\n";
+echo 'Request URI: ' . $_SERVER['REQUEST_URI'] . "\n";
+echo 'PHP Version: ' . phpversion() . "\n";
+echo '</pre>';
 EOT
 chmod 644 /var/www/html/public/test.php
 
