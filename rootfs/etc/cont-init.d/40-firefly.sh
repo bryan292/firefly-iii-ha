@@ -50,12 +50,13 @@ else
 fi
 
 # For Home Assistant integration, we need the proper URLs
-# Using a real http URL is required for the application to function properly
-app_url="http://localhost:8080"
+# Detect ingress URL and use that as the base
+ingress_entry=$(bashio::addon.ingress_entry)
+app_url=$(bashio::addon.ingress_url)
 
 # Log information about the URLs
 bashio::log.info "Using app URL: ${app_url}"
-bashio::log.info "Ingress entry: $(bashio::addon.ingress_entry)"
+bashio::log.info "Ingress entry: ${ingress_entry}"
 
 # Remove index.html if exists (it would take precedence over index.php)
 if [ -f /var/www/html/public/index.html ]; then
@@ -108,7 +109,7 @@ FORCE_HTTPS=false
 FORCE_SINGLE_USER_MODE=true
 APP_NAME="Firefly III on Home Assistant"
 SITE_OWNER=${admin_email}
-ASSET_URL=
+ASSET_URL=${ingress_entry}
 
 # Logging to file settings
 LOG_CHANNEL=stack

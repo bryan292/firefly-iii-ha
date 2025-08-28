@@ -4,13 +4,15 @@
 # Runs the Firefly III queue worker
 # ==============================================================================
 
+# Wait until the database is available
+bashio::net.wait_for "$(bashio::config 'database.host')" "$(bashio::config 'database.port')"
+
+# Get the ingress URL from the Supervisor
+INGRESS_URL=$(bashio::addon.ingress_url)
+bashio::log.info "Firefly III is accessible at: ${INGRESS_URL}"
+
+# Run the queue worker (artisan command) in the background
 cd /var/www/html || exit
 
-# If queue:work fails, we'll just sleep indefinitely instead of crashing
-if php artisan queue:work --sleep=3 --tries=3; then
-  bashio::log.info "Queue worker started successfully"
-else
-  bashio::log.warning "Queue worker failed to start, entering sleep mode"
-  # Just sleep indefinitely instead of crashing
-  exec tail -f /dev/null
-fi
+# Run the queue worker with proper error handling
+exec php artisan queue:work

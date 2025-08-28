@@ -27,15 +27,15 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Disable search engine indexing
-    add_header X-Robots-Tag none;
+    add_header X-Robots-Tag none always;
     
     # Set referrer policy
-    add_header Referrer-Policy "no-referrer-when-downgrade";
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
     
     # Enable cross-origin requests for Home Assistant ingress
-    add_header Access-Control-Allow-Origin "*";
-    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE, HEAD";
-    add_header Access-Control-Allow-Headers "X-Requested-With, Content-Type, Authorization, Accept";
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE, HEAD" always;
+    add_header Access-Control-Allow-Headers "X-Requested-With, Content-Type, Authorization, Accept" always;
 
     # Enable gzip compression
     gzip on;
@@ -44,18 +44,23 @@ server {
     gzip_comp_level 6;
     gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
 
+    # Set up a proxy redirection for direct access to proper ingress URL
+    location = /login {
+        return 302 $scheme://$host:$server_port/;
+    }
+
     # Laravel pretty URLs
     location / {
         try_files $uri $uri/ /index.php?$query_string;
         
         # Add support for OPTIONS preflight requests
         if ($request_method = 'OPTIONS') {
-            add_header 'Access-Control-Allow-Origin' '*';
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE';
-            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
-            add_header 'Access-Control-Max-Age' 1728000;
-            add_header 'Content-Type' 'text/plain; charset=utf-8';
-            add_header 'Content-Length' 0;
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE' always;
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+            add_header 'Access-Control-Max-Age' 1728000 always;
+            add_header 'Content-Type' 'text/plain; charset=utf-8' always;
+            add_header 'Content-Length' 0 always;
             return 204;
         }
     }
@@ -120,7 +125,7 @@ server {
         expires max;
         access_log off;
         log_not_found off;
-        add_header Cache-Control "public, max-age=31536000";
+        add_header Cache-Control "public, max-age=31536000" always;
         try_files $uri $uri/ /index.php?$query_string;
     }
     
