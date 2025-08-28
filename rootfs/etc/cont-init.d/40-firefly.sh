@@ -17,8 +17,8 @@ declare app_url
 declare middleware
 
 # Make sure persistent data directory exists
-mkdir -p /data/firefly-iii 2>/dev/null || true
-mkdir -p /data/nginx/logs 2>/dev/null || true
+mkdir -p /data/firefly-iii
+mkdir -p /data/nginx/logs
 
 # Get config
 admin_email=$(bashio::config 'admin_email')
@@ -46,7 +46,7 @@ done
 # Generate a valid Laravel app key (32 bytes base64 encoded) without using openssl
 if [ ! -f /data/firefly-iii/app_key ]; then
     app_key="base64:$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n')"
-    echo "${app_key}" > /data/firefly-iii/app_key 2>/dev/null || true
+    echo "${app_key}" > /data/firefly-iii/app_key
 else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
@@ -62,19 +62,24 @@ bashio::log.info "Ingress entry: ${ingress_entry}"
 
 # Remove index.html if exists (it would take precedence over index.php)
 if [ -f /var/www/html/public/index.html ]; then
-    rm -f /var/www/html/public/index.html 2>/dev/null || true
+    rm -f /var/www/html/public/index.html
 fi
 
-# Create needed directories but avoid chmod/chown operations
-mkdir -p /var/www/html/storage/logs 2>/dev/null || true
-mkdir -p /var/www/html/storage/app/public 2>/dev/null || true
-mkdir -p /var/www/html/storage/framework/cache 2>/dev/null || true
-mkdir -p /var/www/html/storage/framework/sessions 2>/dev/null || true
-mkdir -p /var/www/html/storage/framework/views 2>/dev/null || true
-mkdir -p /var/www/html/bootstrap/cache 2>/dev/null || true
+# Create needed directories - using mkdir without trying to set permissions
+# This prevents "Operation not permitted" errors
+mkdir -p /var/www/html/storage/logs
+mkdir -p /var/www/html/storage/app/public
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+mkdir -p /var/www/html/bootstrap/cache
 
-# Create log file - avoid chmod
+# Create log file
 touch /var/www/html/storage/logs/laravel.log 2>/dev/null || true
+
+# Set permissions using chmod which is less likely to fail than chown
+chmod -R 777 /var/www/html/storage
+chmod -R 777 /var/www/html/bootstrap/cache
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
@@ -158,8 +163,11 @@ EOF
 
 cd /var/www/html || exit
 
+# Set permissions on .env file (laravel needs to be able to read it)
+chmod 644 /var/www/html/.env
+
 # Create a simple login/register controller to directly handle these routes
-mkdir -p /var/www/html/app/Http/Controllers 2>/dev/null || true
+mkdir -p /var/www/html/app/Http/Controllers
 cat > /var/www/html/app/Http/Controllers/IngressController.php << EOF
 <?php
 
@@ -191,7 +199,7 @@ class IngressController extends Controller
 EOF
 
 # Create a custom route to handle login and registration directly
-mkdir -p /var/www/html/routes 2>/dev/null || true
+mkdir -p /var/www/html/routes
 cat > /var/www/html/routes/ingress.php << EOF
 <?php
 
@@ -208,7 +216,7 @@ Route::fallback(function () {
 EOF
 
 # Create middleware to fix redirects
-mkdir -p /var/www/html/app/Http/Middleware 2>/dev/null || true
+mkdir -p /var/www/html/app/Http/Middleware
 cat > /var/www/html/app/Http/Middleware/${middleware}.php << EOF
 <?php
 
@@ -246,6 +254,10 @@ class ${middleware}
     }
 }
 EOF
+
+# Set permissions for newly created files
+chmod -R 755 /var/www/html/app
+chmod -R 755 /var/www/html/routes
 
 # Fix the Kernel.php modification script to avoid undefined variable warning
 cat > /tmp/append_kernel.php << EOF
@@ -291,6 +303,8 @@ if (\$modified !== \$content) {
 }
 EOF
 
+# Ensure the PHP script is executable
+chmod +x /tmp/append_kernel.php
 php /tmp/append_kernel.php || true
 
 # Fix the route service provider update to not use $this in static context
@@ -340,26 +354,32 @@ if (preg_match(\$pattern, \$content, \$matches)) {
 }
 EOF
 
+# Ensure the PHP script is executable
+chmod +x /tmp/update_routes_provider.php
 php /tmp/update_routes_provider.php || true
 
-# Create a redirect fix script without using printf or cat heredoc - write directly to file with echo
-echo '<?php' > /tmp/fix_redirects.php
-echo '$file = "/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php";' >> /tmp/fix_redirects.php
-echo 'if (file_exists($file)) {' >> /tmp/fix_redirects.php
-echo '    $content = file_get_contents($file);' >> /tmp/fix_redirects.php
-echo '' >> /tmp/fix_redirects.php
-echo '    // Define pattern and replacement' >> /tmp/fix_redirects.php
-echo '    $pattern = "/return redirect\\(RouteServiceProvider::HOME\\);/";' >> /tmp/fix_redirects.php
-echo '    $replacement = "return redirect(\"/\");";' >> /tmp/fix_redirects.php
-echo '' >> /tmp/fix_redirects.php
-echo '    // Only modify if pattern is found' >> /tmp/fix_redirects.php
-echo '    if (preg_match($pattern, $content)) {' >> /tmp/fix_redirects.php
-echo '        $modified = preg_replace($pattern, $replacement, $content);' >> /tmp/fix_redirects.php
-echo '        file_put_contents($file, $modified);' >> /tmp/fix_redirects.php
-echo '        echo "Fixed RedirectIfAuthenticated middleware\n";' >> /tmp/fix_redirects.php
-echo '    }' >> /tmp/fix_redirects.php
-echo '}' >> /tmp/fix_redirects.php
+# Create a redirect fix script
+cat > /tmp/fix_redirects.php << EOF
+<?php
+\$file = "/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php";
+if (file_exists(\$file)) {
+    \$content = file_get_contents(\$file);
 
+    // Define pattern and replacement
+    \$pattern = "/return redirect\\(RouteServiceProvider::HOME\\);/";
+    \$replacement = "return redirect(\"/\");";
+
+    // Only modify if pattern is found
+    if (preg_match(\$pattern, \$content)) {
+        \$modified = preg_replace(\$pattern, \$replacement, \$content);
+        file_put_contents(\$file, \$modified);
+        echo "Fixed RedirectIfAuthenticated middleware\n";
+    }
+}
+EOF
+
+# Ensure the PHP script is executable
+chmod +x /tmp/fix_redirects.php
 php /tmp/fix_redirects.php || true
 
 # Attempt to create database if it doesn't exist yet
@@ -372,6 +392,13 @@ elif command -v mariadb >/dev/null 2>&1; then
 else
     bashio::log.warning "No MySQL/MariaDB client found, skipping database creation"
 fi
+
+# Set permissions on the entire Laravel app directory
+chmod -R 755 /var/www/html
+
+# Ensure storage and bootstrap/cache have 777 permissions
+chmod -R 777 /var/www/html/storage
+chmod -R 777 /var/www/html/bootstrap/cache
 
 # Cache configurations
 bashio::log.info "Setting up Laravel application..."
@@ -429,12 +456,6 @@ else
     bashio::log.info "No admin email provided, skipping user creation."
 fi
 
-# Make storage and bootstrap directories writable without chown
-find /var/www/html/storage -type d -exec chmod a+rwx {} \; 2>/dev/null || true
-find /var/www/html/bootstrap/cache -type d -exec chmod a+rwx {} \; 2>/dev/null || true
-find /var/www/html/storage -type f -exec chmod a+rw {} \; 2>/dev/null || true
-find /var/www/html/bootstrap/cache -type f -exec chmod a+rw {} \; 2>/dev/null || true
-
 # Create a simple standalone HTML file to verify the web server is working
 cat > /var/www/html/public/hello.html << EOT
 <!DOCTYPE html>
@@ -467,6 +488,11 @@ echo 'Request URI: ' . \$_SERVER['REQUEST_URI'] . "\n";
 echo 'PHP Version: ' . phpversion() . "\n";
 echo '</pre>';
 EOT
+
+# Make the test files readable
+chmod 644 /var/www/html/public/hello.html
+chmod 644 /var/www/html/public/info.php
+chmod 644 /var/www/html/public/test.php
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"

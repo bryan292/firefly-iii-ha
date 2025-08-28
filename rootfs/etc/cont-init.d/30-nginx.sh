@@ -12,22 +12,22 @@ bashio::log.info "Add-on IP address: ${addon_ip}"
 bashio::log.info "Network interfaces:"
 ip addr || true
 
-# Create temp directories with proper structure but avoid permission changes
-mkdir -p /tmp/client_temp/0 /tmp/client_temp/1/1 /tmp/client_temp/1/2 || true
-mkdir -p /tmp/proxy_temp/0 /tmp/proxy_temp/1/1 /tmp/proxy_temp/1/2 || true
-mkdir -p /tmp/fastcgi_temp/0 /tmp/fastcgi_temp/1/1 /tmp/fastcgi_temp/1/2 || true
-mkdir -p /tmp/uwsgi_temp/0 /tmp/uwsgi_temp/1/1 /tmp/uwsgi_temp/1/2 || true
-mkdir -p /tmp/scgi_temp/0 /tmp/scgi_temp/1/1 /tmp/scgi_temp/1/2 || true
+# Create temp directories with proper structure
+mkdir -p /tmp/client_temp/0 /tmp/client_temp/1/1 /tmp/client_temp/1/2
+mkdir -p /tmp/proxy_temp/0 /tmp/proxy_temp/1/1 /tmp/proxy_temp/1/2
+mkdir -p /tmp/fastcgi_temp/0 /tmp/fastcgi_temp/1/1 /tmp/fastcgi_temp/1/2
+mkdir -p /tmp/uwsgi_temp/0 /tmp/uwsgi_temp/1/1 /tmp/uwsgi_temp/1/2
+mkdir -p /tmp/scgi_temp/0 /tmp/scgi_temp/1/1 /tmp/scgi_temp/1/2
 
 # Create needed directories for logs - using /tmp instead
-mkdir -p /tmp/nginx/logs || true
+mkdir -p /tmp/nginx/logs
 
-# Make web root accessible without permissions changes
-chmod -R a+rw /tmp/nginx /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp || true
+# Make all temp directories accessible with full permissions
+chmod -R 777 /tmp/client_temp /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp /tmp/nginx
 
 # Remove any existing configuration to avoid conflicts
-rm -f /etc/nginx/http.d/default.conf || true
-rm -f /etc/nginx/http.d/direct.conf || true
+rm -f /etc/nginx/http.d/default.conf
+rm -f /etc/nginx/http.d/direct.conf
 
 # Create a simple nginx config in http.d with no ownership operations
 cat > /etc/nginx/http.d/ingress.conf << EOF
@@ -134,6 +134,9 @@ server {
     }
 }
 EOF
+
+# Attempt to make the site directory and logs accessible
+chmod -R a+rwX /var/www/html 2>/dev/null || true
 
 # Check if Nginx configuration is valid
 bashio::log.info "Checking Nginx configuration..."
