@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.80
+- Removed chown operations from PHP-FPM startup script to fix permission issues
+- Changed Nginx and PHP-FPM to use nobody user to avoid permission problems
+- Fixed temporary directory permissions handling
+
 ## 1.0.79
 - Fixed user permission issues by switching from apache to nginx user
 - Updated Nginx configuration to use nginx user instead of apache

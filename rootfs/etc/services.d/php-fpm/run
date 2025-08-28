@@ -13,9 +13,9 @@ log_level = warning
 pid = /tmp/php-fpm.pid
 
 [www]
-; Use nginx user instead of apache
-user = nginx
-group = nginx
+; Use nobody user instead of nginx or apache to avoid permission issues
+user = nobody
+group = nobody
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -61,30 +61,12 @@ done
 touch /var/www/html/storage/logs/laravel.log || true
 chmod 666 /var/www/html/storage/logs/laravel.log || true
 
-# Also ensure the whole application directory is world-writable
-chmod -R 777 /var/www/html || true
-
 # Create the PHP-FPM tmp directories with permissive permissions
 mkdir -p /tmp/php-fpm || true
 chmod -R 777 /tmp/php-fpm || true
 
-# Make sure nginx user exists (it should already exist in the base image)
-adduser -D -H -G www-data nginx 2>/dev/null || true
-
 # Start PHP-FPM with explicit config file
 bashio::log.info "Starting PHP-FPM..."
 
-# Create a special flag file to indicate PHP-FPM should run as nginx
-touch /tmp/php-fpm-run-as-nginx
-
-# Create a temporary wrapper script to run php-fpm with the modified config
-cat > /tmp/run-php-fpm.sh << 'EOF'
-#!/bin/sh
-# Set ownership of all files to nginx user to fix permission issues
-chown -R nginx:nginx /var/www/html || true
-# Run PHP-FPM with explicit config
+# Run PHP-FPM with explicit config - remove chown operation
 exec php-fpm82 -F -y /etc/php82/php-fpm.d/www.conf -c /etc/php82/php.ini
-EOF
-
-chmod +x /tmp/run-php-fpm.sh
-exec /tmp/run-php-fpm.sh
