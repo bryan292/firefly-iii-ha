@@ -326,8 +326,10 @@ EOF
 
 php /tmp/update_routes_provider.php
 
-# Create a file to modify the RedirectIfAuthenticated middleware
-cat > /tmp/fix_redirects.php << 'EOF'
+# Create a fix_redirects.php file without using PHP variables in bash context
+# This is where the issue was - bash was trying to expand $pattern, $content, and $modified
+# before the PHP script was executed
+cat > /tmp/fix_redirects.php << 'EOT'
 <?php
 $file = '/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php';
 if (file_exists($file)) {
@@ -344,7 +346,7 @@ if (file_exists($file)) {
         echo "Fixed RedirectIfAuthenticated middleware\n";
     }
 }
-EOF
+EOT
 
 php /tmp/fix_redirects.php
 
