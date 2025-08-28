@@ -51,16 +51,12 @@ fi
 
 # For Home Assistant integration, we need the proper URLs
 ingress_entry=$(bashio::addon.ingress_entry)
-app_url=""
+app_url="http://localhost:8080"
 
 # Get the Home Assistant API URL
 if bashio::supervisor.ping; then
     bashio::log.info "Getting Home Assistant URL from Supervisor..."
     app_url=$(bashio::addon.ingress_url)
-fi
-
-if [[ -z "${app_url}" ]]; then
-    app_url="http://localhost:8080"
 fi
 
 bashio::log.info "Using app URL: ${app_url}"
@@ -261,12 +257,20 @@ chown -R nginx:nginx /var/www/html
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
 
-# Create PHP info file for debugging
+# Create additional PHP test files for debugging
 cat > /var/www/html/public/info.php << EOT
 <?php
 phpinfo();
 EOT
 chmod 644 /var/www/html/public/info.php
+
+cat > /var/www/html/public/test.php << EOT
+<?php
+echo '<h1>PHP Test Page</h1>';
+echo '<p>If you can see this, PHP is working correctly.</p>';
+echo '<p>Server time: ' . date('Y-m-d H:i:s') . '</p>';
+EOT
+chmod 644 /var/www/html/public/test.php
 
 # Show some debug information
 bashio::log.info "Firefly III setup complete. App URL: ${app_url}"

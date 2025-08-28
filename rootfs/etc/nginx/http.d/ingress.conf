@@ -43,28 +43,23 @@ server {
 
     # Laravel pretty URLs
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files $uri $uri/ /index.php$is_args$args;
     }
 
-    # Main location for PHP files
-    location ~ \.php$ {
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+    # Handle PHP files - critical for executing not downloading PHP
+    location ~ [^/]\.php(/|$) {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        if (!-f $document_root$fastcgi_script_name) {
+            return 404;
+        }
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
-        
-        # Include standard FastCGI parameters
         include fastcgi_params;
-        
-        # Set the script filename parameter for PHP-FPM
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        
-        # Set additional headers for PHP scripts
-        fastcgi_param HTTP_X_INGRESS 1;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
         fastcgi_param HTTP_X_FORWARDED_HOST $http_host;
         fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
         fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
-        
-        # Configure FastCGI parameters for Firefly III
         fastcgi_buffers 16 16k;
         fastcgi_buffer_size 32k;
         fastcgi_connect_timeout 300;
@@ -81,17 +76,8 @@ server {
         try_files $uri $uri/ /index.php?$query_string;
     }
     
-    # Handle /test.php requests specially for debugging
-    location = /test.php {
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-    }
-    
     # Block access to hidden files
-    location ~ /\. {
+    location ~ /\.(?!well-known) {
         deny all;
         access_log off;
         log_not_found off;

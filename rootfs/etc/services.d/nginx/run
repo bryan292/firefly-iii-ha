@@ -14,12 +14,26 @@ touch /data/nginx/logs/access.log
 chmod 644 /data/nginx/logs/*.log
 chown -R nginx:nginx /data/nginx
 
-# Create symlink to make test.php accessible directly
+# Ensure PHP files are readable by nginx
+if [ -f /var/www/html/public/info.php ]; then
+    bashio::log.info "Setting up info.php file..."
+    chown nginx:nginx /var/www/html/public/info.php
+    chmod 644 /var/www/html/public/info.php
+fi
+
 if [ -f /var/www/html/public/test.php ]; then
-    bashio::log.info "Setting up test file..."
+    bashio::log.info "Setting up test.php file..."
     chown nginx:nginx /var/www/html/public/test.php
     chmod 644 /var/www/html/public/test.php
 fi
+
+# Check PHP-FPM configuration
+bashio::log.info "Checking PHP-FPM configuration..."
+php-fpm8 -t || bashio::log.warning "PHP-FPM configuration test failed"
+
+# Check Nginx configuration
+bashio::log.info "Checking Nginx configuration..."
+nginx -t || bashio::log.warning "Nginx configuration test failed"
 
 bashio::log.info "Starting Nginx..."
 exec nginx -g "daemon off;"
