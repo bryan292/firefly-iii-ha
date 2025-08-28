@@ -74,7 +74,7 @@ cat > /var/www/html/.env << EOF
 APP_ENV=local
 APP_DEBUG=true
 APP_KEY=${app_key}
-APP_URL=${app_url}
+APP_URL=http://localhost
 APP_LOG_LEVEL=${log_level}
 APP_TIMEZONE=${timezone}
 
@@ -109,7 +109,7 @@ FORCE_HTTPS=false
 FORCE_SINGLE_USER_MODE=true
 APP_NAME="Firefly III on Home Assistant"
 SITE_OWNER=${admin_email}
-ASSET_URL=${ingress_entry}
+ASSET_URL=
 
 # Logging to file settings
 LOG_CHANNEL=stack
@@ -135,7 +135,7 @@ MAP_DEFAULT_ZOOM=6
 TRUSTED_PROXIES=**
 SANCTUM_STATEFUL_DOMAINS=*
 SESSION_DOMAIN=*
-FORCE_ROOT_URL=${ingress_entry}
+FORCE_ROOT_URL=
 DISABLE_AUTHENTICATE_GUARD=true
 SINGLE_USER_MODE=true
 
@@ -146,9 +146,42 @@ AUTHENTICATION_GUARD_HEADER=REMOTE_USER
 # Custom for ingress
 URL_FORCE_HTTPS=false
 HOME_ASSISTANT_INGRESS=true
+DISABLE_GLOBAL_REDIRECTS=true
 EOF
 
 cd /var/www/html || exit
+
+# Create a simple login/register controller to directly handle these routes
+mkdir -p /var/www/html/app/Http/Controllers
+cat > /var/www/html/app/Http/Controllers/IngressController.php << EOF
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class IngressController extends Controller
+{
+    public function login()
+    {
+        if (Auth::check()) {
+            return redirect('/');
+        }
+        
+        return view('auth.login');
+    }
+    
+    public function register()
+    {
+        if (Auth::check()) {
+            return redirect('/');
+        }
+        
+        return view('auth.register');
+    }
+}
+EOF
 
 # Create a custom route to handle login and registration directly
 mkdir -p /var/www/html/routes
@@ -156,14 +189,10 @@ cat > /var/www/html/routes/ingress.php << EOF
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\IngressController;
 
-Route::get('/login', function () {
-    return view('auth.login');
-});
-
-Route::get('/register', function () {
-    return view('auth.register');
-});
+Route::get('/login', [IngressController::class, 'login']);
+Route::get('/register', [IngressController::class, 'register']);
 
 // Add a fallback route to catch all URLs and redirect to home
 Route::fallback(function () {
@@ -181,26 +210,32 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Redirect;
 
 class IngressMiddleware
 {
     public function handle(Request \$request, Closure \$next)
     {
-        // Get base path from environment
-        \$ingressUrl = env('ASSET_URL', '');
+        // Disable Laravel redirects to external URLs
+        Redirect::macro('away', function (\$path, \$status = 302, \$headers = []) {
+            return redirect()->to(\$path, \$status, \$headers);
+        });
         
-        // Set URL parameters for all generated URLs in the application
-        if (!empty(\$ingressUrl)) {
-            URL::forceRootUrl(rtrim(env('APP_URL'), '/'));
-            URL::formatPathUsing(function (\$path) use (\$ingressUrl) {
-                if (empty(\$path) || \$path == '/') {
-                    return rtrim(\$ingressUrl, '/');
-                }
-                return rtrim(\$ingressUrl, '/') . '/' . ltrim(\$path, '/');
-            });
+        // Handle the response
+        \$response = \$next(\$request);
+        
+        // If it's a redirect to an external URL, modify it to redirect internally
+        if (\$response->isRedirection()) {
+            \$location = \$response->headers->get('Location');
+            
+            // Check if it's an external URL that should be made internal
+            if (strpos(\$location, 'http://192.168.68.61:8080') === 0) {
+                \$internalPath = str_replace('http://192.168.68.61:8080', '', \$location);
+                return redirect(\$internalPath);
+            }
         }
         
-        return \$next(\$request);
+        return \$response;
     }
 }
 EOF
@@ -231,6 +266,16 @@ if (\$modified !== \$content) {
     echo "Successfully added middleware to Kernel.php\n";
 } else {
     echo "Could not find the web middleware group in Kernel.php\n";
+    
+    // Fallback: Insert the middleware in a different way
+    // Find protected $middleware = [
+    \$pattern = "/protected \\\$middleware = \\[/";
+    if (preg_match(\$pattern, \$content, \$matches)) {
+        \$replacement = \$matches[0] . "\n        \\\\IngressMiddleware::class,";
+        \$modified = preg_replace(\$pattern, \$replacement, \$content);
+        file_put_contents(\$file, \$modified);
+        echo "Added middleware to global middleware array instead\n";
+    }
 }
 EOF
 
@@ -256,10 +301,46 @@ if (preg_match(\$pattern, \$content, \$matches)) {
     echo "Routes added to RouteServiceProvider.php\n";
 } else {
     echo "Could not find the boot method in RouteServiceProvider.php\n";
+    
+    // Try to find the __construct method as an alternative
+    \$pattern = '/function __construct\\(\\)\\s*{/';
+    if (preg_match(\$pattern, \$content, \$matches)) {
+        \$replacement = \$matches[0] . "\n        \$this->loadRoutesFrom(base_path('routes/ingress.php'));";
+        \$modified = preg_replace(\$pattern, \$replacement, \$content, 1);
+        
+        // Write the modified content back to the file
+        file_put_contents(\$file, \$modified);
+        echo "Routes added to RouteServiceProvider constructor instead\n";
+    } else {
+        // Create a direct routes file that will be loaded automatically
+        echo "Creating a direct routes file\n";
+        file_put_contents('/var/www/html/routes/web.php', file_get_contents('/var/www/html/routes/ingress.php'), FILE_APPEND);
+    }
 }
 EOF
 
 php /tmp/update_routes_provider.php
+
+# Create a file to modify the RedirectIfAuthenticated middleware
+cat > /tmp/fix_redirects.php << EOF
+<?php
+\$file = '/var/www/html/app/Http/Middleware/RedirectIfAuthenticated.php';
+if (file_exists(\$file)) {
+    \$content = file_get_contents(\$file);
+    
+    // Find the handle method and modify the redirect
+    \$pattern = '/return redirect\\(RouteServiceProvider::HOME\\);/';
+    \$replacement = 'return redirect("/");';
+    
+    if (preg_match(\$pattern, \$content)) {
+        \$modified = preg_replace(\$pattern, \$replacement, \$content);
+        file_put_contents(\$file, \$modified);
+        echo "Fixed RedirectIfAuthenticated middleware\n";
+    }
+}
+EOF
+
+php /tmp/fix_redirects.php
 
 # Attempt to create database if it doesn't exist yet
 bashio::log.info "Ensuring database exists..."

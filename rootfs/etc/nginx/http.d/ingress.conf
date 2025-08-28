@@ -7,6 +7,7 @@ server {
 
     # Required for ingress
     absolute_redirect off;
+    port_in_redirect off;
 
     client_max_body_size 100M;
 
@@ -40,6 +41,10 @@ server {
     gzip_proxied any;
     gzip_comp_level 6;
     gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
+
+    # Rewrite external redirects to keep them within the ingress path
+    proxy_redirect http://192.168.68.61:8080/ /;
+    proxy_redirect https://192.168.68.61:8080/ /;
 
     # Handle login and register routes properly
     location = /login {
