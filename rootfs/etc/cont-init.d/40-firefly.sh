@@ -324,7 +324,7 @@ if (preg_match(\$pattern, \$content, \$matches)) {
         // Instead of appending to web.php, create our own routes file
         file_put_contents('/var/www/html/routes/ingress_routes.php', file_get_contents('/var/www/html/routes/ingress.php'));
         // Add a new entry to the RouteServiceProvider to load this file
-        \$content = str_replace('$this->mapWebRoutes();', "\$this->mapWebRoutes();\n        require base_path('routes/ingress_routes.php');", \$content);
+        \$content = str_replace('\$this->mapWebRoutes();', "\\\$this->mapWebRoutes();\n        require base_path('routes/ingress_routes.php');", \$content);
         file_put_contents(\$file, \$content);
     }
 }
