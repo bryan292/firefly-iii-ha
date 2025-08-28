@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.74
+- Changed PHP-FPM to run as root user to fix persistent permission issues
+- Simplified PHP-FPM configuration to avoid security warnings
+- Removed unnecessary PHP flags that could cause configuration errors
+- Kept permissive directory permissions to ensure proper operation
+
 ## 1.0.73
 - Fixed PHP-FPM configuration error with cgi.fix_pathinfo
 - Changed nginx to run as root to fix permission issues
