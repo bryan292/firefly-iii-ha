@@ -44,10 +44,10 @@ server {
     gzip_comp_level 6;
     gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
 
-    # Set up a proxy redirection for direct access to proper ingress URL
-    location = /login {
-        return 302 $scheme://$host:$server_port/;
-    }
+    # Remove the login redirect that can cause loops
+    # location = /login {
+    #     return 302 $scheme://$host:$server_port/;
+    # }
 
     # Laravel pretty URLs
     location / {
