@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.78
+- Changed PHP-FPM to run as apache user instead of root or nobody
+- Created apache user explicitly to ensure it exists
+- Updated Nginx to also run as apache user for consistency
+- Added file permission changes to ensure apache user can access all files
+- Fixed temp directory permissions
+
 ## 1.0.77
 - Fixed PHP-FPM configuration by moving allow_url_fopen from pool level to php_admin_flag
 - Improved error handling for PHP-FPM startup
