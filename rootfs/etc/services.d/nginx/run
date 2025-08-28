@@ -51,4 +51,4 @@ sleep 1
 
 bashio::log.info "Starting Nginx with debug logging..."
 # Start nginx in foreground mode with stdout logging
-exec nginx -g "daemon off; error_log /dev/stdout info;"
+exec nginx -g "error_log /dev/stdout info;"

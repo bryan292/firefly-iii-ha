@@ -19,10 +19,10 @@ bashio::var.json \
       -template /etc/nginx/templates/ingress.gtpl \
       -out /etc/nginx/http.d/ingress.conf
 
-# Also create a simpler direct configuration as fallback
+# Create a simpler direct configuration as fallback - without default_server to avoid conflicts
 cat > /etc/nginx/http.d/direct.conf << EOL
 server {
-    listen 8099 default_server;
+    listen 8099;
     listen 8080;
     
     root /var/www/html/public;
