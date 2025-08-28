@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.82
+- Fixed PHP-FPM configuration to explicitly use root user and group
+- Updated Nginx configuration to use root user for proper permissions
+- Simplified temp directory path configuration to avoid ownership issues
+
 ## 1.0.81
 - Removed user directive from Nginx configuration to avoid permission issues
 - Created proper directory structure for Nginx temp files

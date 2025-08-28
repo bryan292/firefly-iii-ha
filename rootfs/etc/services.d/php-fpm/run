@@ -4,7 +4,7 @@
 # Runs the PHP-FPM daemon
 # ==============================================================================
 
-# Create php-fpm config without explicit user/group
+# Create php-fpm config with explicit user/group settings
 mkdir -p /etc/php82/php-fpm.d
 cat > /etc/php82/php-fpm.d/www.conf << EOF
 [global]
@@ -13,9 +13,9 @@ log_level = warning
 pid = /tmp/php-fpm.pid
 
 [www]
-; Do not set user and group to avoid permission issues
-; user = nobody
-; group = nobody
+; Explicitly set user and group to root to avoid permission issues
+user = root
+group = root
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -68,5 +68,5 @@ chmod -R 777 /tmp/php-fpm || true
 # Start PHP-FPM with explicit config file
 bashio::log.info "Starting PHP-FPM..."
 
-# Run PHP-FPM with explicit config - remove any user/group arguments
+# Run PHP-FPM with explicit config
 exec php-fpm82 -F -y /etc/php82/php-fpm.d/www.conf -c /etc/php82/php.ini
