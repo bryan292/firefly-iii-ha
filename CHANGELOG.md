@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.70
+- Rolled back to running services as root
+- Simplified nginx configuration
+- Fixed temp directory paths
+- Removed problematic permission changes
+- Consolidated nginx configuration in one file
+
 ## 1.0.69
 - Fixed Nginx configuration to avoid /var/lib/nginx permission issues
 - Redirected all logs to stdout/stderr instead of files

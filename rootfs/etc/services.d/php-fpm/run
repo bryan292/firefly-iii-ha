@@ -8,13 +8,13 @@
 mkdir -p /etc/php82/php-fpm.d
 cat > /etc/php82/php-fpm.d/www.conf << EOF
 [global]
-error_log = /proc/self/fd/2
+error_log = /proc/1/fd/2
 log_level = warning
 
 [www]
-; Use nobody:nobody instead of root:root to avoid PHP-FPM error
-user = nobody
-group = nobody
+; Run as root (container environment)
+user = root
+group = root
 listen = 127.0.0.1:9000
 pm = dynamic
 pm.max_children = 10
@@ -24,8 +24,8 @@ pm.max_spare_servers = 5
 pm.max_requests = 500
 
 ; Redirect logs to stdout/stderr
-access.log = /proc/self/fd/1
-php_admin_value[error_log] = /proc/self/fd/2
+access.log = /proc/1/fd/1
+php_admin_value[error_log] = /proc/1/fd/2
 php_admin_flag[log_errors] = on
 php_admin_value[memory_limit] = 512M
 php_admin_value[upload_max_filesize] = 50M
@@ -35,7 +35,7 @@ php_admin_flag[display_errors] = off
 php_admin_flag[expose_php] = off
 EOF
 
-# Create required directories with proper permissions
+# Create required directories (but no permissions changes)
 directories=("/var/www/html/storage/logs" 
              "/var/www/html/storage/app/public"
              "/var/www/html/storage/framework/cache"
@@ -43,18 +43,13 @@ directories=("/var/www/html/storage/logs"
              "/var/www/html/storage/framework/views"
              "/var/www/html/bootstrap/cache")
 
-# Ensure directories exist and set permissive permissions so nobody can write to them
+# Ensure directories exist
 for dir in "${directories[@]}"; do
     mkdir -p "$dir" || true
-    chmod -R 777 "$dir" || true
 done
 
-# Ensure the Laravel log file exists with permissive permissions
+# Ensure the Laravel log file exists
 touch /var/www/html/storage/logs/laravel.log || true
-chmod 666 /var/www/html/storage/logs/laravel.log || true
-
-# Also ensure the whole application directory is writable by nobody
-chmod -R 777 /var/www/html || true
 
 # Start PHP-FPM
 bashio::log.info "Starting PHP-FPM..."
