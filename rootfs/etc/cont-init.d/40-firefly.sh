@@ -81,6 +81,28 @@ chmod -R 777 /var/www/html/storage 2>/dev/null || true
 chmod -R 777 /var/www/html/bootstrap/cache 2>/dev/null || true
 chmod 666 /var/www/html/storage/logs/laravel.log 2>/dev/null || true
 
+# Find PHP-FPM executable - check all possible locations
+PHP_FPM_EXECUTABLE=""
+if [ -f /usr/sbin/php-fpm8 ]; then
+    PHP_FPM_EXECUTABLE="/usr/sbin/php-fpm8"
+elif [ -f /usr/sbin/php-fpm7 ]; then
+    PHP_FPM_EXECUTABLE="/usr/sbin/php-fpm7"
+elif [ -f /usr/bin/php-fpm8 ]; then
+    PHP_FPM_EXECUTABLE="/usr/bin/php-fpm8"
+elif [ -f /usr/bin/php-fpm7 ]; then
+    PHP_FPM_EXECUTABLE="/usr/bin/php-fpm7"
+elif [ -f /usr/local/sbin/php-fpm ]; then
+    PHP_FPM_EXECUTABLE="/usr/local/sbin/php-fpm"
+elif [ -f /usr/local/bin/php-fpm ]; then
+    PHP_FPM_EXECUTABLE="/usr/local/bin/php-fpm"
+fi
+
+# Display PHP-FPM info for debugging
+bashio::log.info "PHP-FPM executable found at: ${PHP_FPM_EXECUTABLE:-Not found}"
+bashio::log.info "PHP version: $(php -v 2>/dev/null || echo 'PHP not found')"
+bashio::log.info "Available PHP binaries:"
+find /usr -name "php*" -type f 2>/dev/null || echo "No PHP binaries found"
+
 # Fix PHP-FPM config to run as root if file exists and is writable
 if [ -f /etc/php8/php-fpm.d/www.conf ] && [ -w /etc/php8/php-fpm.d/www.conf ]; then
     sed -i 's/user = nobody/user = root/g' /etc/php8/php-fpm.d/www.conf
@@ -525,13 +547,51 @@ cat > /tmp/php-fpm-custom-run << EOT
 # Start PHP-FPM service
 # ==============================================================================
 
-# Run PHP-FPM as root to avoid permission issues
+# Display PHP information for debugging
+echo "Available PHP binaries:"
+find /usr -name "php*" -type f 2>/dev/null || echo "No PHP binaries found"
+echo "PHP version: \$(php -v 2>/dev/null || echo 'PHP not found')"
+
+# Try each possible PHP-FPM executable in order
 if [ -f /usr/sbin/php-fpm8 ]; then
+    echo "Using /usr/sbin/php-fpm8"
     exec /usr/sbin/php-fpm8 --nodaemonize --fpm-config /etc/php8/php-fpm.conf -R
 elif [ -f /usr/sbin/php-fpm7 ]; then
+    echo "Using /usr/sbin/php-fpm7"
     exec /usr/sbin/php-fpm7 --nodaemonize --fpm-config /etc/php7/php-fpm.conf -R
-else
+elif [ -f /usr/bin/php-fpm8 ]; then
+    echo "Using /usr/bin/php-fpm8"
+    exec /usr/bin/php-fpm8 --nodaemonize -R
+elif [ -f /usr/bin/php-fpm7 ]; then
+    echo "Using /usr/bin/php-fpm7"
+    exec /usr/bin/php-fpm7 --nodaemonize -R
+elif [ -f /usr/local/sbin/php-fpm ]; then
+    echo "Using /usr/local/sbin/php-fpm"
+    exec /usr/local/sbin/php-fpm --nodaemonize -R
+elif [ -f /usr/local/bin/php-fpm ]; then
+    echo "Using /usr/local/bin/php-fpm"
+    exec /usr/local/bin/php-fpm --nodaemonize -R
+elif command -v php-fpm8 >/dev/null 2>&1; then
+    echo "Using php-fpm8 from PATH"
+    exec php-fpm8 --nodaemonize -R
+elif command -v php-fpm7 >/dev/null 2>&1; then
+    echo "Using php-fpm7 from PATH"
+    exec php-fpm7 --nodaemonize -R
+elif command -v php-fpm >/dev/null 2>&1; then
+    echo "Using php-fpm from PATH"
     exec php-fpm --nodaemonize -R
+else
+    echo "No PHP-FPM executable found!"
+    # As a last resort, try to create a simple PHP server
+    if command -v php >/dev/null 2>&1; then
+        echo "Attempting to start PHP built-in server as fallback"
+        cd /var/www/html/public || exit
+        exec php -S 0.0.0.0:9000
+    else
+        echo "No PHP executable found. Cannot start PHP service."
+        sleep 30
+        exit 1
+    fi
 fi
 EOT
 
