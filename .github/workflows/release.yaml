@@ -51,6 +51,8 @@ jobs:
           
       - name: 🔄 Bump version in config.yaml
         run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           # Get the current version
           current_version=$(grep "version:" config.yaml | sed 's/.*version: *"\(.*\)".*/\1/')
           
