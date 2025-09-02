@@ -166,11 +166,16 @@ php artisan config:clear || true
 php artisan cache:clear || true
 php artisan view:clear || true
 
-# Workaround for "Target class [auth] does not exist" error
-if grep -q "providers.*AuthServiceProvider" /var/www/html/config/app.php; then
+# Attempt to fix "Target class [auth] does not exist" error
+if [ -f /var/www/html/config/app.php ]; then
     bashio::log.info "Attempting to fix Laravel 'auth' provider error..."
+    # Reinstall laravel/ui and run artisan commands to ensure auth scaffolding is present
+    composer require laravel/ui --dev || true
+    php artisan ui vue --auth || true
     php artisan vendor:publish --provider="Illuminate\Auth\AuthServiceProvider" || true
     php artisan config:cache || true
+    php artisan cache:clear || true
+    php artisan view:clear || true
 fi
 
 # Generate storage link
