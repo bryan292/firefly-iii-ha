@@ -94,11 +94,13 @@ fi
 if [ ! -e /var/lib/nginx/logs ]; then
     ln -s "${NGINX_LOG_DIR}" /var/lib/nginx/logs 2>/dev/null \
         || { bashio::log.warning "Could not symlink nginx logs dir, patching config to use ${NGINX_LOG_DIR} directly"; \
+             sed -i 's|/var/lib/nginx/logs/error.log|'"${NGINX_LOG_DIR}"'/error.log|g' /etc/nginx/nginx.conf; \
              sed -i 's|/var/lib/nginx/logs|'"${NGINX_LOG_DIR}"'|g' /etc/nginx/nginx.conf; }
 fi
 if [ ! -e /var/lib/nginx/tmp ]; then
     ln -s "/data/firefly-iii/nginx/tmp" /var/lib/nginx/tmp 2>/dev/null \
         || { bashio::log.warning "Could not symlink nginx tmp dir, patching config to use /data/firefly-iii/nginx/tmp directly"; \
+             sed -i 's|/var/lib/nginx/tmp/client_body|'"${NGINX_TMP_DIR}"'|g' /etc/nginx/nginx.conf; \
              sed -i 's|/var/lib/nginx/tmp|/data/firefly-iii/nginx/tmp|g' /etc/nginx/nginx.conf; }
 fi
 
