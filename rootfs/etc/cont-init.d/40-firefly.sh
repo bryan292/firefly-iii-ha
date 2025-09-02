@@ -61,18 +61,48 @@ mkdir -p /var/www/html/storage
 mkdir -p /var/www/html/storage/app/public
 mkdir -p /var/www/html/bootstrap/cache
 
-bashio::log.info "Setting file permissions..."
-chown -R nginx:nginx /var/www/html/storage || true
-chown -R nginx:nginx /var/www/html/bootstrap/cache || true
-chown nginx:nginx /var/www/html/.env || true
-chmod -R 775 /var/www/html/storage || true
-chmod -R 775 /var/www/html/storage/app || true
-chmod -R 775 /var/www/html/storage/app/public || true
-chmod -R 775 /var/www/html/bootstrap/cache || true
-chmod 664 /var/www/html/.env || true
+# Try to write .env to /data/firefly-iii/.env first, then symlink if possible
+ENV_PATH="/data/firefly-iii/.env"
+cat > "${ENV_PATH}" << EOF
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=${app_key}
+APP_URL=${app_url}
+APP_LOG_LEVEL=${log_level}
+APP_TIMEZONE=${timezone}
 
-# Setup environment file
-cat > /var/www/html/.env << EOF
+DB_CONNECTION=mysql
+DB_HOST=${db_host}
+DB_PORT=${db_port}
+DB_DATABASE=${db_name}
+DB_USERNAME=${db_user}
+DB_PASSWORD=${db_password}
+
+CACHE_DRIVER=file
+SESSION_DRIVER=file
+QUEUE_DRIVER=sync
+
+MAIL_DRIVER=log
+MAIL_HOST=smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_FROM=changeme@example.com
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+
+TRUSTED_PROXIES=**
+
+TZ=${timezone}
+
+# Force Firefly III to use the correct base URL
+FORCE_HTTPS=true
+ASSET_URL=${app_url}
+EOF
+
+# Try to symlink .env if possible
+if [ ! -e /var/www/html/.env ]; then
+    ln -s "${ENV_PATH}" /var/www/html/.env 2>/dev/null || cp "${ENV_PATH}" /var/www/html/.env 2>/dev/null || bashio::log.warning "Could not symlink or copy .env to /var/www/html/.env"
+fi
 APP_ENV=production
 APP_DEBUG=false
 APP_KEY=${app_key}
