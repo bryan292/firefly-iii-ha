@@ -84,18 +84,22 @@ find /etc/nginx/ -type f -exec sed -i 's|/var/lib/nginx/tmp|/data/firefly-iii/ng
 
 # Remove any existing /var/lib/nginx/logs and /var/lib/nginx/tmp directories if they are not writable
 if [ -d /var/lib/nginx/logs ] && [ ! -w /var/lib/nginx/logs ]; then
-    rm -rf /var/lib/nginx/logs
+    rm -rf /var/lib/nginx/logs || bashio::log.warning "Could not remove /var/lib/nginx/logs"
 fi
 if [ -d /var/lib/nginx/tmp ] && [ ! -w /var/lib/nginx/tmp ]; then
-    rm -rf /var/lib/nginx/tmp
+    rm -rf /var/lib/nginx/tmp || bashio::log.warning "Could not remove /var/lib/nginx/tmp"
 fi
 
-# Create symlinks to writable locations
+# Create symlinks to writable locations, or update NGINX config to use writable paths directly if symlinks fail
 if [ ! -e /var/lib/nginx/logs ]; then
-    ln -s "${NGINX_LOG_DIR}" /var/lib/nginx/logs 2>/dev/null || bashio::log.warning "Could not symlink nginx logs dir"
+    ln -s "${NGINX_LOG_DIR}" /var/lib/nginx/logs 2>/dev/null \
+        || { bashio::log.warning "Could not symlink nginx logs dir, patching config to use ${NGINX_LOG_DIR} directly"; \
+             sed -i 's|/var/lib/nginx/logs|'"${NGINX_LOG_DIR}"'|g' /etc/nginx/nginx.conf; }
 fi
 if [ ! -e /var/lib/nginx/tmp ]; then
-    ln -s "/data/firefly-iii/nginx/tmp" /var/lib/nginx/tmp 2>/dev/null || bashio::log.warning "Could not symlink nginx tmp dir"
+    ln -s "/data/firefly-iii/nginx/tmp" /var/lib/nginx/tmp 2>/dev/null \
+        || { bashio::log.warning "Could not symlink nginx tmp dir, patching config to use /data/firefly-iii/nginx/tmp directly"; \
+             sed -i 's|/var/lib/nginx/tmp|/data/firefly-iii/nginx/tmp|g' /etc/nginx/nginx.conf; }
 fi
 
 # Try to write .env to /data/firefly-iii/.env first, then symlink if possible
