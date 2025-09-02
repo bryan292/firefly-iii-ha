@@ -166,6 +166,13 @@ php artisan config:clear || true
 php artisan cache:clear || true
 php artisan view:clear || true
 
+# Workaround for "Target class [auth] does not exist" error
+if grep -q "providers.*AuthServiceProvider" /var/www/html/config/app.php; then
+    bashio::log.info "Attempting to fix Laravel 'auth' provider error..."
+    php artisan vendor:publish --provider="Illuminate\Auth\AuthServiceProvider" || true
+    php artisan config:cache || true
+fi
+
 # Generate storage link
 bashio::log.info "Creating storage link..."
 php artisan storage:link || true
