@@ -172,16 +172,17 @@ else
     bashio::log.info "No admin email provided, skipping user creation."
 fi
 
-# Set permissions
+# Ensure storage and cache directories exist and are writable
+mkdir -p /var/www/html/storage
+mkdir -p /var/www/html/storage/app/public
+mkdir -p /var/www/html/bootstrap/cache
+
 bashio::log.info "Setting file permissions..."
 chown -R nginx:nginx /var/www/html
-chmod -R 755 /var/www/html/storage
-chmod -R 755 /var/www/html/bootstrap/cache
-
-# Ensure bootstrap/cache is writable
-mkdir -p /var/www/html/bootstrap/cache
-chmod -R 755 /var/www/html/bootstrap/cache
-chown -R nginx:nginx /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/storage/app
+chmod -R 775 /var/www/html/storage/app/public
+chmod -R 775 /var/www/html/bootstrap/cache
 
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
