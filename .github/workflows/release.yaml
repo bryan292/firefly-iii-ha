@@ -30,24 +30,24 @@ jobs:
         id: date
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      - name: 🏷️ Create tag
-        id: tag
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          tag_name="v${{ env.VERSION }}"
-          echo "TAG=$tag_name" >> $GITHUB_ENV
-          git tag $tag_name
-          git push origin $tag_name
+      # - name: 🏷️ Create tag
+      #   id: tag
+      #   run: |
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     tag_name="v${{ env.VERSION }}"
+      #     echo "TAG=$tag_name" >> $GITHUB_ENV
+      #     git tag $tag_name
+      #     git push origin $tag_name
 
-      - name: 📦 Create release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.TAG }}
-          name: Release ${{ env.VERSION }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+      # - name: 📦 Create release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     tag_name: ${{ env.TAG }}
+      #     name: Release ${{ env.VERSION }}
+      #     draft: false
+      #     prerelease: false
+      #     generate_release_notes: true
           
       - name: 🔄 Bump version in config.yaml
         run: |
