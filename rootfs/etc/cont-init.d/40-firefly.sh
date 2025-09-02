@@ -82,6 +82,22 @@ fi
 find /etc/nginx/ -type f -exec sed -i 's|/var/lib/nginx/logs|'"${NGINX_LOG_DIR}"'|g' {} +
 find /etc/nginx/ -type f -exec sed -i 's|/var/lib/nginx/tmp|/data/firefly-iii/nginx/tmp|g' {} +
 
+# Remove any existing /var/lib/nginx/logs and /var/lib/nginx/tmp directories if they are not writable
+if [ -d /var/lib/nginx/logs ] && [ ! -w /var/lib/nginx/logs ]; then
+    rm -rf /var/lib/nginx/logs
+fi
+if [ -d /var/lib/nginx/tmp ] && [ ! -w /var/lib/nginx/tmp ]; then
+    rm -rf /var/lib/nginx/tmp
+fi
+
+# Create symlinks to writable locations
+if [ ! -e /var/lib/nginx/logs ]; then
+    ln -s "${NGINX_LOG_DIR}" /var/lib/nginx/logs 2>/dev/null || bashio::log.warning "Could not symlink nginx logs dir"
+fi
+if [ ! -e /var/lib/nginx/tmp ]; then
+    ln -s "/data/firefly-iii/nginx/tmp" /var/lib/nginx/tmp 2>/dev/null || bashio::log.warning "Could not symlink nginx tmp dir"
+fi
+
 # Try to write .env to /data/firefly-iii/.env first, then symlink if possible
 ENV_PATH="/data/firefly-iii/.env"
 cat > "${ENV_PATH}" << EOF
