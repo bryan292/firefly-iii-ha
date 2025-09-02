@@ -103,40 +103,6 @@ EOF
 if [ ! -e /var/www/html/.env ]; then
     ln -s "${ENV_PATH}" /var/www/html/.env 2>/dev/null || cp "${ENV_PATH}" /var/www/html/.env 2>/dev/null || bashio::log.warning "Could not symlink or copy .env to /var/www/html/.env"
 fi
-APP_ENV=production
-APP_DEBUG=false
-APP_KEY=${app_key}
-APP_URL=${app_url}
-APP_LOG_LEVEL=${log_level}
-APP_TIMEZONE=${timezone}
-
-DB_CONNECTION=mysql
-DB_HOST=${db_host}
-DB_PORT=${db_port}
-DB_DATABASE=${db_name}
-DB_USERNAME=${db_user}
-DB_PASSWORD=${db_password}
-
-CACHE_DRIVER=file
-SESSION_DRIVER=file
-QUEUE_DRIVER=sync
-
-MAIL_DRIVER=log
-MAIL_HOST=smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_FROM=changeme@example.com
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=null
-
-TRUSTED_PROXIES=**
-
-TZ=${timezone}
-
-# Force Firefly III to use the correct base URL
-FORCE_HTTPS=true
-ASSET_URL=${app_url}
-EOF
 
 cd /var/www/html || exit
 
