@@ -56,6 +56,18 @@ else
     app_key=$(cat /data/firefly-iii/app_key)
 fi
 
+# Ensure storage and cache directories exist and are writable
+mkdir -p /var/www/html/storage
+mkdir -p /var/www/html/storage/app/public
+mkdir -p /var/www/html/bootstrap/cache
+
+bashio::log.info "Setting file permissions..."
+chown -R nginx:nginx /var/www/html
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/storage/app
+chmod -R 775 /var/www/html/storage/app/public
+chmod -R 775 /var/www/html/bootstrap/cache
+
 # Setup environment file
 cat > /var/www/html/.env << EOF
 APP_ENV=production
@@ -171,18 +183,6 @@ EOSQL
 else
     bashio::log.info "No admin email provided, skipping user creation."
 fi
-
-# Ensure storage and cache directories exist and are writable
-mkdir -p /var/www/html/storage
-mkdir -p /var/www/html/storage/app/public
-mkdir -p /var/www/html/bootstrap/cache
-
-bashio::log.info "Setting file permissions..."
-chown -R nginx:nginx /var/www/html
-chmod -R 775 /var/www/html/storage
-chmod -R 775 /var/www/html/storage/app
-chmod -R 775 /var/www/html/storage/app/public
-chmod -R 775 /var/www/html/bootstrap/cache
 
 # Create a file to indicate successful initialization
 touch /var/www/html/.initialized
