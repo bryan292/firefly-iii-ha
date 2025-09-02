@@ -23,6 +23,10 @@ server {
         fastcgi_param HTTP_X_FORWARDED_HOST $host;
         fastcgi_param HTTP_X_FORWARDED_PORT $server_port;
         fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+        fastcgi_param X_HASSIO_INGRESS_PATH $http_x_hassio_ingress_path;
+        fastcgi_param X_REAL_IP $remote_addr;
+        fastcgi_param X_FORWARDED_FOR $proxy_add_x_forwarded_for;
         include fastcgi_params;
     }
 
