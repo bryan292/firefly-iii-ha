@@ -62,13 +62,20 @@ mkdir -p /var/www/html/storage/app/public
 mkdir -p /var/www/html/bootstrap/cache
 
 # Ensure nginx log and temp directories exist and are writable
-if [ -w /var/lib/nginx ]; then
-    mkdir -p /var/lib/nginx/logs || bashio::log.warning "Could not create /var/lib/nginx/logs"
-    mkdir -p /var/lib/nginx/tmp/client_body || bashio::log.warning "Could not create /var/lib/nginx/tmp/client_body"
-    chmod -R 777 /var/lib/nginx/logs || bashio::log.warning "Could not chmod /var/lib/nginx/logs"
-    chmod -R 777 /var/lib/nginx/tmp || bashio::log.warning "Could not chmod /var/lib/nginx/tmp"
-else
-    bashio::log.warning "Nginx log/temp directories are not writable, skipping creation."
+NGINX_LOG_DIR="/data/firefly-iii/nginx/logs"
+NGINX_TMP_DIR="/data/firefly-iii/nginx/tmp/client_body"
+
+mkdir -p "${NGINX_LOG_DIR}"
+mkdir -p "${NGINX_TMP_DIR}"
+chmod -R 777 "${NGINX_LOG_DIR}"
+chmod -R 777 "/data/firefly-iii/nginx/tmp"
+
+# Symlink to /var/lib/nginx if possible
+if [ ! -e /var/lib/nginx/logs ]; then
+    ln -s "${NGINX_LOG_DIR}" /var/lib/nginx/logs 2>/dev/null || bashio::log.warning "Could not symlink nginx logs dir"
+fi
+if [ ! -e /var/lib/nginx/tmp ]; then
+    ln -s "/data/firefly-iii/nginx/tmp" /var/lib/nginx/tmp 2>/dev/null || bashio::log.warning "Could not symlink nginx tmp dir"
 fi
 
 # Try to write .env to /data/firefly-iii/.env first, then symlink if possible
