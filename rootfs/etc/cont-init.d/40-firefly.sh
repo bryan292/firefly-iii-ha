@@ -62,11 +62,14 @@ mkdir -p /var/www/html/storage/app/public
 mkdir -p /var/www/html/bootstrap/cache
 
 bashio::log.info "Setting file permissions..."
-chown -R nginx:nginx /var/www/html
-chmod -R 775 /var/www/html/storage
-chmod -R 775 /var/www/html/storage/app
-chmod -R 775 /var/www/html/storage/app/public
-chmod -R 775 /var/www/html/bootstrap/cache
+chown -R nginx:nginx /var/www/html/storage || true
+chown -R nginx:nginx /var/www/html/bootstrap/cache || true
+chown nginx:nginx /var/www/html/.env || true
+chmod -R 775 /var/www/html/storage || true
+chmod -R 775 /var/www/html/storage/app || true
+chmod -R 775 /var/www/html/storage/app/public || true
+chmod -R 775 /var/www/html/bootstrap/cache || true
+chmod 664 /var/www/html/.env || true
 
 # Setup environment file
 cat > /var/www/html/.env << EOF
