@@ -184,4 +184,4 @@ else
 fi
 
 # Create a file to indicate successful initialization
-touch /var/www/html/.initialized
+touch /data/firefly-iii/.initialized || bashio::log.warning "Could not create .initialized file in /data/firefly-iii"
