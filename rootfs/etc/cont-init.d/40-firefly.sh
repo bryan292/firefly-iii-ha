@@ -62,10 +62,14 @@ mkdir -p /var/www/html/storage/app/public
 mkdir -p /var/www/html/bootstrap/cache
 
 # Ensure nginx log and temp directories exist and are writable
-mkdir -p /var/lib/nginx/logs
-mkdir -p /var/lib/nginx/tmp/client_body
-chmod -R 777 /var/lib/nginx/logs || true
-chmod -R 777 /var/lib/nginx/tmp || true
+if [ -w /var/lib/nginx ]; then
+    mkdir -p /var/lib/nginx/logs
+    mkdir -p /var/lib/nginx/tmp/client_body
+    chmod -R 777 /var/lib/nginx/logs || true
+    chmod -R 777 /var/lib/nginx/tmp || true
+else
+    bashio::log.warning "Nginx log/temp directories are not writable, skipping creation."
+fi
 
 # Try to write .env to /data/firefly-iii/.env first, then symlink if possible
 ENV_PATH="/data/firefly-iii/.env"
