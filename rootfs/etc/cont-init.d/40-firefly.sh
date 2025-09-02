@@ -63,10 +63,10 @@ mkdir -p /var/www/html/bootstrap/cache
 
 # Ensure nginx log and temp directories exist and are writable
 if [ -w /var/lib/nginx ]; then
-    mkdir -p /var/lib/nginx/logs
-    mkdir -p /var/lib/nginx/tmp/client_body
-    chmod -R 777 /var/lib/nginx/logs || true
-    chmod -R 777 /var/lib/nginx/tmp || true
+    mkdir -p /var/lib/nginx/logs || bashio::log.warning "Could not create /var/lib/nginx/logs"
+    mkdir -p /var/lib/nginx/tmp/client_body || bashio::log.warning "Could not create /var/lib/nginx/tmp/client_body"
+    chmod -R 777 /var/lib/nginx/logs || bashio::log.warning "Could not chmod /var/lib/nginx/logs"
+    chmod -R 777 /var/lib/nginx/tmp || bashio::log.warning "Could not chmod /var/lib/nginx/tmp"
 else
     bashio::log.warning "Nginx log/temp directories are not writable, skipping creation."
 fi
