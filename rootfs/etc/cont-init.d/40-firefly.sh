@@ -185,3 +185,8 @@ fi
 
 # Create a file to indicate successful initialization
 touch /data/firefly-iii/.initialized || bashio::log.warning "Could not create .initialized file in /data/firefly-iii"
+
+# Remove any attempt to create /var/www/html/.initialized (if present elsewhere)
+if [ -e /var/www/html/.initialized ]; then
+    rm -f /var/www/html/.initialized
+fi
