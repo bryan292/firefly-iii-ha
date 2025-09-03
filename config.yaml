@@ -1,6 +1,6 @@
 name: "Firefly III"
 description: "Firefly III personal finance manager, accessible via Home Assistant Ingress and backed by the MariaDB add-on."
-version: "0.2.1"
+version: "0.2.2"
 slug: "firefly-iii"
 init: false
 arch:
