@@ -34,6 +34,14 @@ if [ -f /data/options.json ]; then
     export DB_USERNAME=$(jq --raw-output '.db_user' /data/options.json)
     export DB_PASSWORD=$(jq --raw-output '.db_password' /data/options.json)
     
+    # Ensure PHP has the session directory with proper permissions
+    mkdir -p /var/www/html/storage/framework/sessions
+    mkdir -p /var/www/html/storage/framework/views
+    mkdir -p /var/www/html/storage/framework/cache
+    mkdir -p /var/www/html/storage/logs
+    chown -R www-data:www-data /var/www/html/storage
+    chmod -R 775 /var/www/html/storage
+    
     # Create a healthcheck endpoint for Home Assistant
     mkdir -p /var/www/html/public/healthcheck
     cat > /var/www/html/public/healthcheck/index.php << 'EOF'
@@ -42,6 +50,35 @@ header('Content-Type: application/json');
 echo json_encode(['status' => 'ok', 'timestamp' => time()]);
 EOF
     
+    # Create ingress-friendly htaccess for direct PHP server
+    cat > /var/www/html/public/.htaccess << 'EOF'
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle ingress path
+    RewriteCond %{HTTP:X-Ingress-Path} ^(.+)$
+    RewriteRule ^ %1/ [L,R=301]
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+EOF
+
     # Try to run our specialized Firefly-III run script for Home Assistant
     if [ -f /firefly-iii/run.sh ]; then
         echo "Executing Firefly III addon run script"

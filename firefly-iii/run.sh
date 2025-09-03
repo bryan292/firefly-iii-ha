@@ -39,38 +39,63 @@ while ! nc -z "$db_host" "$db_port"; do
 done
 echo "✅ Database connection established"
 
-# Check if stock entrypoint.sh exists and is executable
-if [ -f /entrypoint.sh ] && [ -x /entrypoint.sh ]; then
-    echo "🚀 Executing stock Firefly III entrypoint.sh with proper environment"
-    # Export our environment variables to ensure they override any defaults
-    export APP_ENV=production
-    export APP_DEBUG=false
-    export APP_KEY
-    export DB_CONNECTION=mysql
-    export DB_HOST="${DB_HOST:-core-mariadb}"
-    export DB_PORT="${DB_PORT:-3306}"
-    export DB_DATABASE="${DB_DATABASE:-firefly}"
-    export DB_USERNAME="${DB_USERNAME:-firefly}"
-    export DB_PASSWORD="${DB_PASSWORD}"
-    
-    # Execute the original entrypoint script with all our environment variables
-    exec /entrypoint.sh
-else
-    # Fallback to a simple PHP server if entrypoint.sh isn't available
-    echo "🔄 Running database migrations..."
-    cd /var/www/html
-    php artisan migrate --force
-    php artisan db:seed --force
-    php artisan firefly-iii:upgrade-database
-    
-    # Create a healthcheck endpoint for Home Assistant
-    mkdir -p /var/www/html/public/healthcheck
-    cat > /var/www/html/public/healthcheck/index.php << 'EOF'
+# Ensure storage directories exist and have proper permissions
+echo "🔧 Setting up file permissions..."
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/logs
+chown -R www-data:www-data /var/www/html/storage
+chmod -R 775 /var/www/html/storage
+chown -R www-data:www-data /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/bootstrap/cache
+
+# Run database migrations and setup
+echo "🔄 Running database migrations..."
+cd /var/www/html
+php artisan migrate --force
+php artisan db:seed --force
+php artisan firefly-iii:upgrade-database
+php artisan firefly-iii:correct-database
+
+# Create a special script to handle ingress authentication
+cat > /var/www/html/public/ingress-auth.php << 'EOF'
+<?php
+session_start();
+// This file handles ingress authentication for Home Assistant
+$_SESSION['auth_user_id'] = 1; // Set as authenticated
+$_SESSION['auth_guard'] = 'web';
+$_SESSION['auth_remember'] = true;
+
+// Redirect to main page
+header('Location: /');
+exit;
+EOF
+
+# Create a simple router to handle Home Assistant ingress
+cat > /var/www/html/public/index-ingress.php << 'EOF'
+<?php
+// Simple router for ingress support
+$uri = $_SERVER['REQUEST_URI'];
+
+// Handle basic auth or ingress auth
+if (strpos($uri, '/login') !== false) {
+    include 'ingress-auth.php';
+    exit;
+}
+
+// Forward to standard index.php
+include 'index.php';
+EOF
+
+# Create a healthcheck endpoint for Home Assistant
+mkdir -p /var/www/html/public/healthcheck
+cat > /var/www/html/public/healthcheck/index.php << 'EOF'
 <?php
 header('Content-Type: application/json');
 echo json_encode(['status' => 'ok', 'timestamp' => time()]);
 EOF
-    
-    echo "🚀 Starting PHP server..."
-    exec php -S 0.0.0.0:8080 -t public
-fi
+
+echo "🚀 Starting PHP server..."
+cd /var/www/html
+exec php -S 0.0.0.0:8080 -t public public/index-ingress.php

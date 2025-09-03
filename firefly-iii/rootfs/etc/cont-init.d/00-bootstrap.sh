@@ -68,6 +68,15 @@ CACHE_DRIVER=file
 SESSION_DRIVER=file
 # Enable CORS for potential API use
 ALLOW_CORS=true
+# Add these settings to improve Home Assistant Ingress compatibility
+AUTH_GUARD=web
+SESSION_DOMAIN=null
+COOKIE_DOMAIN=null
+COOKIE_SECURE=false
+COOKIE_SAME_SITE=lax
+BROADCAST_DRIVER=log
+QUEUE_CONNECTION=sync
+LOG_CHANNEL=stack
 EOF
 
 # Create .env file for Laravel
@@ -96,6 +105,14 @@ ALLOW_WEBHOOKS=true
 CACHE_DRIVER=file
 SESSION_DRIVER=file
 ALLOW_CORS=true
+AUTH_GUARD=web
+SESSION_DOMAIN=null
+COOKIE_DOMAIN=null
+COOKIE_SECURE=false
+COOKIE_SAME_SITE=lax
+BROADCAST_DRIVER=log
+QUEUE_CONNECTION=sync
+LOG_CHANNEL=stack
 EOF
 
 # Export variables to current shell
@@ -116,6 +133,14 @@ export ALLOW_WEBHOOKS="true"
 export CACHE_DRIVER="file"
 export SESSION_DRIVER="file"
 export ALLOW_CORS="true"
+export AUTH_GUARD="web"
+export SESSION_DOMAIN="null"
+export COOKIE_DOMAIN="null"
+export COOKIE_SECURE="false"
+export COOKIE_SAME_SITE="lax"
+export BROADCAST_DRIVER="log"
+export QUEUE_CONNECTION="sync"
+export LOG_CHANNEL="stack"
 
 # Print created configuration
 echo "✅ Created .env file with the following settings:"
@@ -184,6 +209,14 @@ ALLOW_WEBHOOKS=true
 CACHE_DRIVER=file
 SESSION_DRIVER=file
 ALLOW_CORS=true
+AUTH_GUARD=web
+SESSION_DOMAIN=null
+COOKIE_DOMAIN=null
+COOKIE_SECURE=false
+COOKIE_SAME_SITE=lax
+BROADCAST_DRIVER=log
+QUEUE_CONNECTION=sync
+LOG_CHANNEL=stack
 EOF
 
 echo "✅ Bootstrap completed successfully"
