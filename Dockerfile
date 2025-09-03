@@ -3,14 +3,13 @@ FROM fireflyiii/core:latest
 # Create directory structure first
 USER root
 
-# Install additional dependencies
+# Install additional dependencies without PHP-FPM
 RUN apt-get update && apt-get install -y \
     cron \
     bash \
     jq \
     netcat-openbsd \
     openssl \
-    php8.2-fpm \
     nginx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -28,15 +27,6 @@ RUN mkdir -p /data && \
     chmod -R 755 /etc/cont-init.d /etc/services.d || true && \
     find /etc/cont-init.d -type f -exec chmod +x {} \; || true && \
     find /etc/services.d -name run -exec chmod +x {} \; || true
-
-# Fix PHP-FPM configuration if it exists
-RUN for php_ver in 5 7 8; do \
-        for conf in $(find /etc/php -name "www.conf" 2>/dev/null); do \
-            sed -i 's/;user = .*/user = www-data/g' $conf; \
-            sed -i 's/;group = .*/group = www-data/g' $conf; \
-            echo "Updated PHP-FPM config: $conf"; \
-        done; \
-    done || echo "No PHP-FPM configs found to update"
 
 # Fix storage directory permissions
 RUN mkdir -p /var/www/html/storage/app \

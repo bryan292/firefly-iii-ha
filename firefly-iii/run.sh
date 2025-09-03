@@ -88,116 +88,6 @@ chmod -R 775 /var/www/html/storage
 echo "Created .env file with the following settings:"
 grep -v "PASSWORD" /var/www/html/.env
 
-# Create a minimal nginx configuration if nginx is installed but config is missing
-if [ -x "$(command -v nginx)" ] && [ ! -f /etc/nginx/nginx.conf ]; then
-    mkdir -p /etc/nginx/conf.d
-    
-    # Create a basic nginx.conf
-    cat > /etc/nginx/nginx.conf <<'EOF'
-worker_processes auto;
-pid /tmp/nginx.pid;
-error_log /dev/stderr info;
-
-events {
-    worker_connections 1024;
-}
-
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-    
-    access_log /dev/stdout;
-    
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
-    
-    server {
-        listen 8080 default_server;
-        root /var/www/html/public;
-        index index.php index.html;
-        
-        location / {
-            try_files $uri $uri/ /index.php?$query_string;
-        }
-        
-        location ~ \.php$ {
-            include fastcgi_params;
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            fastcgi_pass 127.0.0.1:9000;
-        }
-    }
-}
-EOF
-
-    # Create a mime.types file if it doesn't exist
-    if [ ! -f /etc/nginx/mime.types ]; then
-        cat > /etc/nginx/mime.types <<'EOF'
-types {
-    text/html                             html htm shtml;
-    text/css                              css;
-    text/xml                              xml;
-    image/gif                             gif;
-    image/jpeg                            jpeg jpg;
-    application/javascript                js;
-    application/json                      json;
-    image/png                             png;
-    image/svg+xml                         svg svgz;
-    application/font-woff                 woff;
-    application/font-woff2                woff2;
-    application/pdf                       pdf;
-}
-EOF
-    fi
-
-    # Create fastcgi_params if it doesn't exist
-    if [ ! -f /etc/nginx/fastcgi_params ]; then
-        cat > /etc/nginx/fastcgi_params <<'EOF'
-fastcgi_param  QUERY_STRING       $query_string;
-fastcgi_param  REQUEST_METHOD     $request_method;
-fastcgi_param  CONTENT_TYPE       $content_type;
-fastcgi_param  CONTENT_LENGTH     $content_length;
-fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
-fastcgi_param  REQUEST_URI        $request_uri;
-fastcgi_param  DOCUMENT_URI       $document_uri;
-fastcgi_param  DOCUMENT_ROOT      $document_root;
-fastcgi_param  SERVER_PROTOCOL    $server_protocol;
-fastcgi_param  REQUEST_SCHEME     $scheme;
-fastcgi_param  HTTPS              $https if_not_empty;
-fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
-fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
-fastcgi_param  REMOTE_ADDR        $remote_addr;
-fastcgi_param  REMOTE_PORT        $remote_port;
-fastcgi_param  SERVER_ADDR        $server_addr;
-fastcgi_param  SERVER_PORT        $server_port;
-fastcgi_param  SERVER_NAME        $server_name;
-fastcgi_param  REDIRECT_STATUS    200;
-EOF
-    fi
-
-    echo "Created minimal Nginx configuration"
-fi
-
-# Define function to start PHP-FPM if it exists
-start_php_fpm() {
-    if [ -x "$(command -v php-fpm)" ]; then
-        echo "Starting PHP-FPM..."
-        php-fpm -D
-    elif [ -x "$(command -v php-fpm7)" ]; then
-        echo "Starting PHP-FPM7..."
-        php-fpm7 -D
-    elif [ -x "$(command -v php-fpm8)" ]; then
-        echo "Starting PHP-FPM8..."
-        php-fpm8 -D
-    else
-        echo "PHP-FPM not found, using built-in server instead"
-        return 1
-    fi
-    return 0
-}
-
 # Define function to execute application using PHP's built-in server
 start_application() {
     cd /var/www/html
@@ -243,9 +133,6 @@ if [ -f /entrypoint.sh ] && [ -x /entrypoint.sh ]; then
 elif [ -x "$(command -v apache2-foreground)" ]; then
     echo "Starting Apache web server"
     exec apache2-foreground
-elif [ -x "$(command -v nginx)" ] && start_php_fpm; then
-    echo "Starting Nginx web server"
-    exec nginx -g "daemon off;"
 elif [ -f /var/www/html/artisan ]; then
     echo "Starting Laravel application with built-in server"
     start_application
