@@ -27,9 +27,14 @@ RUN mkdir -p /data && \
     find /etc/cont-init.d -type f -exec chmod +x {} \; || true && \
     find /etc/services.d -name run -exec chmod +x {} \; || true
 
-# Ensure PHP-FPM pool config has user defined
-RUN sed -i 's/;user = .*/user = www-data/g' /etc/php/*/fpm/pool.d/www.conf && \
-    sed -i 's/;group = .*/group = www-data/g' /etc/php/*/fpm/pool.d/www.conf
+# Fix PHP-FPM configuration if it exists
+RUN for php_ver in 5 7 8; do \
+        for conf in $(find /etc/php -name "www.conf" 2>/dev/null); do \
+            sed -i 's/;user = .*/user = www-data/g' $conf; \
+            sed -i 's/;group = .*/group = www-data/g' $conf; \
+            echo "Updated PHP-FPM config: $conf"; \
+        done; \
+    done || echo "No PHP-FPM configs found to update"
 
 # Fix storage directory permissions
 RUN mkdir -p /var/www/html/storage && \
