@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     jq \
     netcat-openbsd \
     openssl \
-    php-fpm \
+    php8.2-fpm \
     nginx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
