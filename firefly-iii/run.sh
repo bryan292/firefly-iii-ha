@@ -17,6 +17,13 @@ PHP_MEMORY_LIMIT=$(jq --raw-output '.php_memory_limit // "512M"' $CONFIG_PATH)
 
 echo "🔧 Configuring Firefly III..."
 
+# Check for persistent environment file
+ENV_FILE=/data/firefly-iii.env
+if [ -f "$ENV_FILE" ]; then
+    echo "📄 Loading environment from $ENV_FILE"
+    source "$ENV_FILE"
+fi
+
 # Generate proper base64 APP_KEY - must be exactly 32 bytes long
 if [ -z "$APP_KEY_OPT" ]; then
     if [ -f /data/app_key ]; then
@@ -86,6 +93,31 @@ CACHE_DRIVER=file
 # Better session handling for ingress
 SESSION_DRIVER=file
 # Enable CORS for potential API use
+ALLOW_CORS=true
+EOL
+
+# Save environment to persistent file
+cat > $ENV_FILE <<EOL
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=${APP_KEY}
+APP_URL=${APP_URL:-http://localhost}
+DB_CONNECTION=mysql
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+DB_DATABASE=${DB_NAME}
+DB_USERNAME=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+MAIL_MAILER=log
+MAIL_FROM=changeme@example.com
+SITE_OWNER=changeme@example.com
+TRUSTED_PROXIES=${TRUSTED_PROXIES}
+TZ=${TIMEZONE}
+PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT}
+DISABLE_DEMO_USER=true
+ALLOW_WEBHOOKS=true
+CACHE_DRIVER=file
+SESSION_DRIVER=file
 ALLOW_CORS=true
 EOL
 
@@ -186,6 +218,8 @@ fi
 # Start Firefly III using the correct entrypoint
 if [ -f /entrypoint.sh ] && [ -x /entrypoint.sh ]; then
     echo "🚀 Using entrypoint.sh"
+    # Make sure entrypoint.sh sees our environment variables
+    env > /tmp/firefly-env
     exec /entrypoint.sh
 elif [ -x "$(command -v apache2-foreground)" ]; then
     echo "🚀 Starting Apache web server"

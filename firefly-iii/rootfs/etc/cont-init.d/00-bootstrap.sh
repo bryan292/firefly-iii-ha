@@ -4,6 +4,10 @@ set -e
 CONFIG_PATH=/data/options.json
 APP_KEY_OPT=$(jq --raw-output '.app_key // ""' $CONFIG_PATH)
 
+# Create and persist environment file
+echo "Creating environment file for persistence between container restarts..."
+ENV_FILE=/data/firefly-iii.env
+
 # Handle APP_KEY
 if [ -z "$APP_KEY_OPT" ] && [ -z "$APP_KEY" ]; then
     if [ -f /data/app_key ]; then
@@ -22,6 +26,9 @@ if [ -z "$APP_KEY_OPT" ] && [ -z "$APP_KEY" ]; then
         
         # Update .env file
         sed -i "s|APP_KEY=.*|APP_KEY=${NEW_APP_KEY}|" /var/www/html/.env
+        
+        # Save to persistent environment file
+        echo "APP_KEY=$NEW_APP_KEY" > $ENV_FILE
     fi
 fi
 
