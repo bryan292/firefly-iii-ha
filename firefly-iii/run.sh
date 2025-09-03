@@ -66,10 +66,27 @@ chmod -R 775 /var/www/html/storage
 echo "Created .env file with the following settings:"
 grep -v "PASSWORD" /var/www/html/.env
 
+# Define function to execute application
+start_application() {
+    # First apply migrations
+    cd /var/www/html
+    
+    # Try to run artisan commands without failing the script
+    php artisan migrate --force || echo "Migration failed but continuing"
+    php artisan firefly-iii:upgrade-database || echo "Database upgrade failed but continuing"
+    php artisan firefly-iii:verify || echo "Verification failed but continuing"
+    
+    # Start the web server
+    php artisan serve --host=0.0.0.0 --port=8080
+}
+
 # Start Firefly III using the correct entrypoint
 if [ -f /entrypoint.sh ]; then
     exec /entrypoint.sh
+elif [ -f /var/www/html/artisan ]; then
+    # Laravel app is present, start directly
+    start_application
 else
-    echo "ERROR: Cannot find Firefly III entrypoint script"
+    echo "ERROR: Cannot find Firefly III application"
     exit 1
 fi

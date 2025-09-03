@@ -38,7 +38,7 @@ RUN for php_ver in 5 7 8; do \
 
 # Fix storage directory permissions
 RUN mkdir -p /var/www/html/storage && \
-    chown -R www-data:www-data /var/www/html
+    chown -R www-data:www-data /var/www/html || true
 
 # Set environment variables
 ENV TZ=UTC \
