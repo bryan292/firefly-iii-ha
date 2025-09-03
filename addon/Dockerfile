@@ -1,4 +1,4 @@
-FROM fireflyiii/core:6.0.30
+FROM fireflyiii/firefly-iii:6.0.30
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
