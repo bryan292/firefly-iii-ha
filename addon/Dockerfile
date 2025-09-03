@@ -1,4 +1,4 @@
-FROM fireflyiii/firefly-iii:6.0.30
+FROM jc5x/firefly-iii:version-6.0.30
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
