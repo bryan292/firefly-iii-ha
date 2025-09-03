@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     bash \
     jq \
     netcat-openbsd \
+    openssl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,8 +25,9 @@ RUN chmod +x /run.sh
 
 # Ensure directories are writable
 RUN mkdir -p /data && \
-    chmod -R 755 /etc/cont-init.d /etc/services.d && \
-    chmod +x /etc/cont-init.d/* /etc/services.d/*/run || true
+    chmod -R 755 /etc/cont-init.d /etc/services.d || true && \
+    find /etc/cont-init.d -type f -exec chmod +x {} \; || true && \
+    find /etc/services.d -name run -exec chmod +x {} \; || true
 
 # Set environment variables
 ENV TZ=UTC \
@@ -35,6 +37,5 @@ ENV TZ=UTC \
 # Expose port
 EXPOSE 8080
 
-# Use tini as init
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/bin/bash", "/run.sh"]
+# Use standard init instead of tini since fireflyiii/core already uses s6
+CMD ["/run.sh"]

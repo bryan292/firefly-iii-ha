@@ -21,9 +21,10 @@ if [ -z "$APP_KEY_OPT" ]; then
         APP_KEY=$(cat /data/app_key)
         echo "Using stored APP_KEY from /data/app_key"
     else
-        # Will be generated in bootstrap.sh
-        echo "APP_KEY is empty and will be generated during bootstrap"
-        APP_KEY=""
+        # Generate a new key
+        APP_KEY=$(openssl rand -base64 32)
+        echo "Generated new APP_KEY: $APP_KEY"
+        echo "$APP_KEY" > /data/app_key
     fi
 else
     APP_KEY="$APP_KEY_OPT"
@@ -38,21 +39,14 @@ export DB_DATABASE=$DB_NAME
 export DB_USERNAME=$DB_USER
 export DB_PASSWORD=$DB_PASSWORD
 export TZ=$TIMEZONE
+export APP_KEY=$APP_KEY
 export PHP_MEMORY_LIMIT=$PHP_MEMORY_LIMIT
 export TRUSTED_PROXIES=$TRUSTED_PROXIES
-
-# Set APP_KEY if we have it
-if [ -n "$APP_KEY" ]; then
-    export APP_KEY=$APP_KEY
-fi
 
 # Set APP_URL if provided
 if [ -n "$APP_URL" ]; then
     export APP_URL=$APP_URL
 fi
-
-# Set up ingress URL - this helps Firefly work behind the HA proxy
-export TRUSTED_PROXIES=$TRUSTED_PROXIES
 
 # Write minimal .env file for Laravel
 cat > /var/www/html/.env <<EOL
@@ -70,5 +64,11 @@ if [ -n "$APP_URL" ]; then
     echo "APP_URL=${APP_URL}" >> /var/www/html/.env
 fi
 
-# Start s6-overlay
-exec /init
+# If we're running as PID 1, exec the original entrypoint
+if [ $$ -eq 1 ]; then
+    exec /init
+else
+    # Otherwise, we're probably running from s6, so just keep going
+    php-fpm
+    nginx -g "daemon off;"
+fi
