@@ -5,7 +5,6 @@ slug: "firefly-iii"
 init: false
 arch:
   - amd64
-  - aarch64
 startup: services
 webui: http://[HOST]:[PORT:8080]
 ingress: true
