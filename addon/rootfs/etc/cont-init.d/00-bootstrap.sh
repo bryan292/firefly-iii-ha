@@ -25,6 +25,27 @@ if [ -z "$APP_KEY_OPT" ] && [ -z "$APP_KEY" ]; then
     fi
 fi
 
+# Create a source file for environment variables
+cat > /etc/profile.d/app-env.sh << EOF
+#!/bin/bash
+export APP_KEY="${APP_KEY}"
+EOF
+chmod +x /etc/profile.d/app-env.sh
+
+# Add APP_KEY to global environment
+if ! grep -q "APP_KEY" /etc/environment; then
+    echo "APP_KEY=${APP_KEY}" >> /etc/environment
+fi
+
+# Ensure APP_KEY is added to services
+if [ -f /etc/services.d/app/run ] && ! grep -q "APP_KEY" /etc/services.d/app/run; then
+    sed -i "/^exec/i export APP_KEY=\"${APP_KEY}\"" /etc/services.d/app/run
+fi
+
+if [ -f /etc/services.d/cron/run ] && ! grep -q "APP_KEY" /etc/services.d/cron/run; then
+    sed -i "/^exec/i export APP_KEY=\"${APP_KEY}\"" /etc/services.d/cron/run
+fi
+
 # Ensure storage directories are writable
 echo "Ensuring proper permissions on storage directories..."
 chown -R www-data:www-data /var/www/html/storage

@@ -82,8 +82,43 @@ EOF
 # Create .env file for Laravel
 cp $ENV_FILE /var/www/html/.env
 
-# Also add environment variables to global system env for all processes
-cat > $GLOBAL_ENV << EOF
+# Add environment variables to a source file
+cat > /etc/profile.d/firefly-env.sh << EOF
+#!/bin/bash
+export APP_ENV=production
+export APP_DEBUG=false
+export APP_KEY="${APP_KEY}"
+export APP_URL="${APP_URL:-http://localhost}"
+export DB_CONNECTION=mysql
+export DB_HOST="${DB_HOST}"
+export DB_PORT="${DB_PORT}"
+export DB_DATABASE="${DB_NAME}"
+export DB_USERNAME="${DB_USER}"
+export DB_PASSWORD="${DB_PASSWORD}"
+export MAIL_MAILER=log
+export MAIL_FROM=changeme@example.com
+export SITE_OWNER=changeme@example.com
+export TRUSTED_PROXIES="${TRUSTED_PROXIES}"
+export TZ="${TIMEZONE}"
+export PHP_MEMORY_LIMIT="${PHP_MEMORY_LIMIT}"
+export DISABLE_DEMO_USER=true
+export ALLOW_WEBHOOKS=true
+export CACHE_DRIVER=file
+export SESSION_DRIVER=file
+export ALLOW_CORS=true
+export AUTH_GUARD=web
+export SESSION_DOMAIN=null
+export COOKIE_DOMAIN=null
+export COOKIE_SECURE=false
+export COOKIE_SAME_SITE=lax
+export BROADCAST_DRIVER=log
+export QUEUE_CONNECTION=sync
+export LOG_CHANNEL=stack
+EOF
+chmod +x /etc/profile.d/firefly-env.sh
+
+# Also create a systemwide env file that the entrypoint.sh can source
+cat > /etc/firefly.env << EOF
 APP_ENV=production
 APP_DEBUG=false
 APP_KEY=${APP_KEY}
@@ -176,47 +211,22 @@ php artisan db:seed --force
 php artisan firefly-iii:upgrade-database
 php artisan firefly-iii:correct-database
 
-# Create a profile.d script to ensure environment variables are loaded for all shells
-mkdir -p /etc/profile.d
-cat > /etc/profile.d/firefly-env.sh << EOF
-#!/bin/bash
-set -a
-source $ENV_FILE
-set +a
-EOF
-chmod +x /etc/profile.d/firefly-env.sh
+# Add environment file to /etc/services.d/app/run
+if grep -q "source /etc/firefly.env" /etc/services.d/app/run; then
+    echo "✅ Environment source already in app service"
+else
+    # Add source command before the exec command
+    sed -i '/^exec/i source /etc/firefly.env' /etc/services.d/app/run
+    echo "✅ Added environment source to app service"
+fi
 
-# Also create a systemwide env file that the entrypoint.sh can source
-cat > /etc/firefly.env << EOF
-APP_ENV=production
-APP_DEBUG=false
-APP_KEY=${APP_KEY}
-APP_URL=${APP_URL:-http://localhost}
-DB_CONNECTION=mysql
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT}
-DB_DATABASE=${DB_NAME}
-DB_USERNAME=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-MAIL_MAILER=log
-MAIL_FROM=changeme@example.com
-SITE_OWNER=changeme@example.com
-TRUSTED_PROXIES=${TRUSTED_PROXIES}
-TZ=${TIMEZONE}
-PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT}
-DISABLE_DEMO_USER=true
-ALLOW_WEBHOOKS=true
-CACHE_DRIVER=file
-SESSION_DRIVER=file
-ALLOW_CORS=true
-AUTH_GUARD=web
-SESSION_DOMAIN=null
-COOKIE_DOMAIN=null
-COOKIE_SECURE=false
-COOKIE_SAME_SITE=lax
-BROADCAST_DRIVER=log
-QUEUE_CONNECTION=sync
-LOG_CHANNEL=stack
-EOF
+# Add environment file to /etc/services.d/cron/run
+if grep -q "source /etc/firefly.env" /etc/services.d/cron/run; then
+    echo "✅ Environment source already in cron service"
+else
+    # Add source command before the exec command
+    sed -i '/^exec/i source /etc/firefly.env' /etc/services.d/cron/run
+    echo "✅ Added environment source to cron service"
+fi
 
 echo "✅ Bootstrap completed successfully"
