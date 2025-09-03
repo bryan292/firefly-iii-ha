@@ -58,7 +58,29 @@ TRUSTED_PROXIES=${TRUSTED_PROXIES}
 TZ=${TIMEZONE}
 EOL
 
+# Export environment variables for PHP
+export APP_ENV=production
+export APP_DEBUG=false
+export APP_KEY="$APP_KEY"
+export APP_URL="${APP_URL:-http://localhost}"
+export DB_CONNECTION=mysql
+export DB_HOST="$DB_HOST"
+export DB_PORT="$DB_PORT"
+export DB_DATABASE="$DB_NAME"
+export DB_USERNAME="$DB_USER"
+export DB_PASSWORD="$DB_PASSWORD"
+export MAIL_MAILER=log
+export MAIL_FROM=changeme@example.com
+export SITE_OWNER=changeme@example.com
+export TRUSTED_PROXIES="$TRUSTED_PROXIES"
+export TZ="$TIMEZONE"
+
 # Fix permissions for Laravel
+mkdir -p /var/www/html/storage/app
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+mkdir -p /var/www/html/storage/logs
 chown -R www-data:www-data /var/www/html/storage
 chmod -R 775 /var/www/html/storage
 
@@ -66,9 +88,8 @@ chmod -R 775 /var/www/html/storage
 echo "Created .env file with the following settings:"
 grep -v "PASSWORD" /var/www/html/.env
 
-# Define function to execute application
+# Define function to execute application using PHP's built-in server correctly
 start_application() {
-    # First apply migrations
     cd /var/www/html
     
     # Try to run artisan commands without failing the script
@@ -76,17 +97,44 @@ start_application() {
     php artisan firefly-iii:upgrade-database || echo "Database upgrade failed but continuing"
     php artisan firefly-iii:verify || echo "Verification failed but continuing"
     
-    # Start the web server
-    php artisan serve --host=0.0.0.0 --port=8080
+    # Create a simple PHP server script that avoids the urldecode issue
+    cat > /var/www/html/server-fixed.php <<'EOF'
+<?php
+// This fixed server script handles all incoming requests properly
+$uri = $_SERVER['REQUEST_URI'] ?? '/';
+$publicPath = '/var/www/html/public';
+
+// Check if file exists in public directory
+$requestedFile = $publicPath . $uri;
+if ($uri !== '/' && file_exists($requestedFile) && !is_dir($requestedFile)) {
+    // Serve the file directly
+    return false;
+}
+
+// Otherwise, include the front controller
+require_once $publicPath . '/index.php';
+EOF
+
+    # Start the web server with the fixed script
+    echo "Starting PHP server on port 8080..."
+    exec php -S 0.0.0.0:8080 -t /var/www/html/public /var/www/html/server-fixed.php
 }
 
 # Start Firefly III using the correct entrypoint
 if [ -f /entrypoint.sh ]; then
+    echo "Using entrypoint.sh"
     exec /entrypoint.sh
+elif [ -x "$(command -v apache2)" ]; then
+    echo "Starting Apache web server"
+    apache2-foreground
+elif [ -x "$(command -v nginx)" ]; then
+    echo "Starting Nginx web server"
+    nginx -g "daemon off;"
 elif [ -f /var/www/html/artisan ]; then
-    # Laravel app is present, start directly
+    echo "Starting Laravel application with built-in server"
     start_application
 else
     echo "ERROR: Cannot find Firefly III application"
+    ls -la /var/www/html || echo "No /var/www/html directory"
     exit 1
 fi

@@ -37,8 +37,13 @@ RUN for php_ver in 5 7 8; do \
     done || echo "No PHP-FPM configs found to update"
 
 # Fix storage directory permissions
-RUN mkdir -p /var/www/html/storage && \
-    chown -R www-data:www-data /var/www/html || true
+RUN mkdir -p /var/www/html/storage/app \
+    /var/www/html/storage/framework/cache \
+    /var/www/html/storage/framework/sessions \
+    /var/www/html/storage/framework/views \
+    /var/www/html/storage/logs && \
+    chown -R www-data:www-data /var/www/html/storage || true && \
+    chmod -R 775 /var/www/html/storage || true
 
 # Set environment variables
 ENV TZ=UTC \
@@ -46,7 +51,9 @@ ENV TZ=UTC \
     TRUSTED_PROXIES=** \
     MAIL_MAILER=log \
     MAIL_FROM=changeme@example.com \
-    SITE_OWNER=changeme@example.com
+    SITE_OWNER=changeme@example.com \
+    APP_ENV=production \
+    APP_DEBUG=false
 
 # Expose port
 EXPOSE 8080
