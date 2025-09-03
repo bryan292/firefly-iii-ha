@@ -2,11 +2,9 @@ FROM fireflyiii/core:latest
 
 # Create directory structure first
 USER root
-RUN mkdir -p /etc/cont-init.d /etc/services.d/app /etc/services.d/cron
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
-    tini \
     cron \
     bash \
     jq \
@@ -29,13 +27,24 @@ RUN mkdir -p /data && \
     find /etc/cont-init.d -type f -exec chmod +x {} \; || true && \
     find /etc/services.d -name run -exec chmod +x {} \; || true
 
+# Ensure PHP-FPM pool config has user defined
+RUN sed -i 's/;user = .*/user = www-data/g' /etc/php/*/fpm/pool.d/www.conf && \
+    sed -i 's/;group = .*/group = www-data/g' /etc/php/*/fpm/pool.d/www.conf
+
+# Fix storage directory permissions
+RUN mkdir -p /var/www/html/storage && \
+    chown -R www-data:www-data /var/www/html
+
 # Set environment variables
 ENV TZ=UTC \
     PHP_MEMORY_LIMIT=512M \
-    TRUSTED_PROXIES=**
+    TRUSTED_PROXIES=** \
+    MAIL_MAILER=log \
+    MAIL_FROM=changeme@example.com \
+    SITE_OWNER=changeme@example.com
 
 # Expose port
 EXPOSE 8080
 
-# Use standard init instead of tini since fireflyiii/core already uses s6
+# Use the run.sh script as entrypoint
 CMD ["/run.sh"]
