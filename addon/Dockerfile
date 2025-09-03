@@ -1,4 +1,4 @@
-FROM jc5x/firefly-iii:latest
+FROM fireflyiii/core:latest
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
