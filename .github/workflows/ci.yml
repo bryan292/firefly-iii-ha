@@ -30,13 +30,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
         
-      - name: Build and export
+      - name: Build for amd64 platform
         uses: docker/build-push-action@v2
         with:
           context: ./addon
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           load: true
-          tags: fireflyiii-addon:test
+          tags: fireflyiii-addon:test-amd64
           
   test:
     runs-on: ubuntu-latest
@@ -68,7 +68,7 @@ jobs:
             -e DB_PASSWORD=firefly \
             -e APP_KEY=base64:$(openssl rand -base64 32) \
             -e TRUSTED_PROXIES=** \
-            fireflyiii-addon:test
+            fireflyiii-addon:test-amd64
             
       - name: Wait for container to be ready
         run: |
