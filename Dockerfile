@@ -14,17 +14,18 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy rootfs
-COPY rootfs /
+# Copy rootfs if it exists
+COPY firefly-iii/rootfs/ /
+COPY addon/rootfs/ /
 
 # Copy run script
-COPY run.sh /run.sh
+COPY firefly-iii/run.sh /run.sh
 RUN chmod +x /run.sh
 
 # Ensure directories are writable
 RUN mkdir -p /data && \
     chmod -R 755 /etc/cont-init.d /etc/services.d && \
-    chmod +x /etc/cont-init.d/* /etc/services.d/*/run
+    chmod +x /etc/cont-init.d/* /etc/services.d/*/run || true
 
 # Set environment variables
 ENV TZ=UTC \
