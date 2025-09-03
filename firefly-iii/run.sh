@@ -76,6 +76,17 @@ SITE_OWNER=changeme@example.com
 TRUSTED_PROXIES=${TRUSTED_PROXIES}
 TZ=${TIMEZONE}
 PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT}
+
+# Disable demo accounts by default
+DISABLE_DEMO_USER=true
+# Recommended settings for Home Assistant integration
+ALLOW_WEBHOOKS=true
+# Use sqlite for caching to avoid adding load to MariaDB
+CACHE_DRIVER=file
+# Better session handling for ingress
+SESSION_DRIVER=file
+# Enable CORS for potential API use
+ALLOW_CORS=true
 EOL
 
 # Export environment variables for PHP
@@ -95,6 +106,11 @@ export SITE_OWNER=changeme@example.com
 export TRUSTED_PROXIES="$TRUSTED_PROXIES"
 export TZ="$TIMEZONE"
 export PHP_MEMORY_LIMIT="$PHP_MEMORY_LIMIT"
+export DISABLE_DEMO_USER=true
+export ALLOW_WEBHOOKS=true
+export CACHE_DRIVER=file
+export SESSION_DRIVER=file
+export ALLOW_CORS=true
 
 # Fix permissions for Laravel
 echo "🔧 Setting up file permissions..."
@@ -126,6 +142,12 @@ start_application() {
 // This fixed server script handles all incoming requests properly
 $uri = $_SERVER['REQUEST_URI'] ?? '/';
 $publicPath = __DIR__ . '/public';
+
+// Handle Home Assistant ingress path rewrites
+if (strpos($uri, '/api/hassio_ingress/') === 0) {
+    $uri = substr($uri, strlen('/api/hassio_ingress/'));
+    $_SERVER['REQUEST_URI'] = $uri ?: '/';
+}
 
 // Check if file exists in public directory
 $requestedFile = $publicPath . $uri;
