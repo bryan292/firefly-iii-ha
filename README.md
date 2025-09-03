@@ -4,7 +4,7 @@
 
 Firefly III is a self-hosted financial manager. It helps you track your money and make smarter financial decisions.
 
-This add-on packages the official Firefly III Docker image (jc5x/firefly-iii) and makes it easily accessible through Home Assistant with Ingress support.
+This add-on packages the official Firefly III Docker image (fireflyiii/core) and makes it easily accessible through Home Assistant with Ingress support.
 
 ## Features
 
