@@ -1,234 +1,68 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
-CONFIG_PATH=/data/options.json
-
-# Get options from config
-DB_HOST=$(jq --raw-output '.db_host // "core-mariadb"' $CONFIG_PATH)
-DB_PORT=$(jq --raw-output '.db_port // 3306' $CONFIG_PATH)
-DB_NAME=$(jq --raw-output '.db_name // "firefly"' $CONFIG_PATH)
-DB_USER=$(jq --raw-output '.db_user // "firefly"' $CONFIG_PATH)
-DB_PASSWORD=$(jq --raw-output '.db_password // ""' $CONFIG_PATH)
-APP_KEY_OPT=$(jq --raw-output '.app_key // ""' $CONFIG_PATH)
-APP_URL=$(jq --raw-output '.app_url // ""' $CONFIG_PATH)
-TRUSTED_PROXIES=$(jq --raw-output '.trusted_proxies // "**"' $CONFIG_PATH)
-TIMEZONE=$(jq --raw-output '.timezone // "UTC"' $CONFIG_PATH)
-PHP_MEMORY_LIMIT=$(jq --raw-output '.php_memory_limit // "512M"' $CONFIG_PATH)
-
-echo "🔧 Configuring Firefly III..."
-
-# Check for persistent environment file
-ENV_FILE=/data/firefly-iii.env
-if [ -f "$ENV_FILE" ]; then
-    echo "📄 Loading environment from $ENV_FILE"
-    source "$ENV_FILE"
+# Load environment variables if they exist
+if [ -f /data/firefly-iii.env ]; then
+    set -a
+    source /data/firefly-iii.env
+    set +a
+    echo "🔄 Loaded environment from /data/firefly-iii.env"
 fi
 
-# Generate proper base64 APP_KEY - must be exactly 32 bytes long
-if [ -z "$APP_KEY_OPT" ]; then
-    if [ -f /data/app_key ]; then
-        APP_KEY=$(cat /data/app_key)
-        echo "✅ Using stored APP_KEY from /data/app_key"
-    else
-        # Generate a proper Laravel key (must be a 32-byte base64 string)
-        APP_KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
-        echo "🔑 Generated new APP_KEY: $APP_KEY"
-        echo "$APP_KEY" > /data/app_key
-    fi
-else
-    # If the key doesn't start with base64:, add it
-    if [[ "$APP_KEY_OPT" != base64:* ]]; then
-        APP_KEY="base64:$APP_KEY_OPT"
-    else
-        APP_KEY="$APP_KEY_OPT"
-    fi
-    echo "✅ Using APP_KEY from config"
+# Ensure we have an APP_KEY
+if [ -z "$APP_KEY" ] && [ -f /data/app_key ]; then
+    export APP_KEY=$(cat /data/app_key)
+    echo "🔑 Loaded APP_KEY from /data/app_key"
 fi
 
-# Wait for database to be available
-echo "⏳ Waiting for database connection..."
-timeout=60
-while ! nc -z $DB_HOST $DB_PORT; do
-    timeout=$((timeout - 1))
-    if [ $timeout -eq 0 ]; then
-        echo "❌ Timed out waiting for database connection"
-        echo "   Please check that the MariaDB addon is running and the database credentials are correct."
-        sleep 10
+# Make sure we have the Laravel .env file
+if [ -f /data/firefly-iii.env ]; then
+    cp /data/firefly-iii.env /var/www/html/.env
+    echo "📝 Copied environment to Laravel .env file"
+fi
+
+# Check database connection
+db_host="${DB_HOST:-core-mariadb}"
+db_port="${DB_PORT:-3306}"
+echo "🔄 Checking connection to database at $db_host:$db_port..."
+
+max_attempts=30
+attempt=0
+while ! nc -z "$db_host" "$db_port"; do
+    attempt=$((attempt+1))
+    if [ $attempt -ge $max_attempts ]; then
+        echo "❌ Failed to connect to database after $max_attempts attempts"
         exit 1
     fi
-    echo "⏳ Waiting for database to be available... ($timeout seconds left)"
+    echo "⏳ Waiting for database connection... ($attempt/$max_attempts)"
     sleep 1
 done
+echo "✅ Database connection established"
 
-echo "✅ Database connection successful!"
-
-# Create .env file in Laravel format
-cat > /var/www/html/.env <<EOL
-APP_ENV=production
-APP_DEBUG=false
-APP_KEY=${APP_KEY}
-APP_URL=${APP_URL:-http://localhost}
-
-DB_CONNECTION=mysql
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT}
-DB_DATABASE=${DB_NAME}
-DB_USERNAME=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-
-MAIL_MAILER=log
-MAIL_FROM=changeme@example.com
-SITE_OWNER=changeme@example.com
-
-TRUSTED_PROXIES=${TRUSTED_PROXIES}
-TZ=${TIMEZONE}
-PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT}
-
-# Disable demo accounts by default
-DISABLE_DEMO_USER=true
-# Recommended settings for Home Assistant integration
-ALLOW_WEBHOOKS=true
-# Use sqlite for caching to avoid adding load to MariaDB
-CACHE_DRIVER=file
-# Better session handling for ingress
-SESSION_DRIVER=file
-# Enable CORS for potential API use
-ALLOW_CORS=true
-EOL
-
-# Save environment to persistent file
-cat > $ENV_FILE <<EOL
-APP_ENV=production
-APP_DEBUG=false
-APP_KEY=${APP_KEY}
-APP_URL=${APP_URL:-http://localhost}
-DB_CONNECTION=mysql
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT}
-DB_DATABASE=${DB_NAME}
-DB_USERNAME=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-MAIL_MAILER=log
-MAIL_FROM=changeme@example.com
-SITE_OWNER=changeme@example.com
-TRUSTED_PROXIES=${TRUSTED_PROXIES}
-TZ=${TIMEZONE}
-PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT}
-DISABLE_DEMO_USER=true
-ALLOW_WEBHOOKS=true
-CACHE_DRIVER=file
-SESSION_DRIVER=file
-ALLOW_CORS=true
-EOL
-
-# Export environment variables for PHP
-export APP_ENV=production
-export APP_DEBUG=false
-export APP_KEY="$APP_KEY"
-export APP_URL="${APP_URL:-http://localhost}"
-export DB_CONNECTION=mysql
-export DB_HOST="$DB_HOST"
-export DB_PORT="$DB_PORT"
-export DB_DATABASE="$DB_NAME"
-export DB_USERNAME="$DB_USER"
-export DB_PASSWORD="$DB_PASSWORD"
-export MAIL_MAILER=log
-export MAIL_FROM=changeme@example.com
-export SITE_OWNER=changeme@example.com
-export TRUSTED_PROXIES="$TRUSTED_PROXIES"
-export TZ="$TIMEZONE"
-export PHP_MEMORY_LIMIT="$PHP_MEMORY_LIMIT"
-export DISABLE_DEMO_USER=true
-export ALLOW_WEBHOOKS=true
-export CACHE_DRIVER=file
-export SESSION_DRIVER=file
-export ALLOW_CORS=true
-
-# Fix permissions for Laravel
-echo "🔧 Setting up file permissions..."
-mkdir -p /var/www/html/storage/app
-mkdir -p /var/www/html/storage/framework/cache
-mkdir -p /var/www/html/storage/framework/sessions
-mkdir -p /var/www/html/storage/framework/views
-mkdir -p /var/www/html/storage/logs
-chown -R www-data:www-data /var/www/html/storage
-chmod -R 775 /var/www/html/storage
-
-# Display the .env file (excluding password)
-echo "✅ Created .env file with the following settings:"
-grep -v "PASSWORD" /var/www/html/.env
-
-# Define function to execute application using PHP's built-in server
-start_application() {
-    cd /var/www/html
-    
-    echo "🔄 Running database migrations..."
-    # Try to run artisan commands without failing the script
-    php artisan migrate --force || echo "⚠️ Migration failed but continuing"
-    php artisan firefly-iii:upgrade-database || echo "⚠️ Database upgrade failed but continuing"
-    php artisan firefly-iii:verify || echo "⚠️ Verification failed but continuing"
-    
-    # Create a simple PHP server script that avoids the urldecode issue
-    cat > /var/www/html/server-fixed.php <<'EOF'
-<?php
-// This fixed server script handles all incoming requests properly
-$uri = $_SERVER['REQUEST_URI'] ?? '/';
-$publicPath = __DIR__ . '/public';
-
-// Handle Home Assistant ingress path rewrites
-if (strpos($uri, '/api/hassio_ingress/') === 0) {
-    $uri = substr($uri, strlen('/api/hassio_ingress/'));
-    $_SERVER['REQUEST_URI'] = $uri ?: '/';
-}
-
-// Check if file exists in public directory
-$requestedFile = $publicPath . $uri;
-if ($uri !== '/' && file_exists($requestedFile) && !is_dir($requestedFile)) {
-    // Serve the file directly
-    return false;
-}
-
-// Otherwise, include the front controller
-require_once $publicPath . '/index.php';
-EOF
-
-    # Start the web server with the fixed script
-    echo "🚀 Starting PHP server on port 8080..."
-    echo "✅ Firefly III is now available!"
-    
-    # Set a trap to handle SIGTERM and other signals gracefully
-    trap 'echo "📣 Shutting down Firefly III..."; exit 0' SIGTERM SIGINT
-    
-    exec php -S 0.0.0.0:8080 -t /var/www/html/public /var/www/html/server-fixed.php
-}
-
-# Run database migrations
-cd /var/www/html
-echo "🔄 Initializing database..."
-php artisan migrate --force || echo "⚠️ Migration failed but continuing"
-php artisan firefly-iii:upgrade-database || echo "⚠️ Database upgrade failed but continuing"
-php artisan firefly-iii:verify || echo "⚠️ Verification failed but continuing"
-
-# Check for the presence of a user account - create a default one if none exists
-USER_COUNT=$(php artisan firefly-iii:user-count)
-if [[ "$USER_COUNT" == "0" ]]; then
-    echo "⚠️ No users found in the database. You should create a user via the web interface."
-fi
-
-# Start Firefly III using the correct entrypoint
+# Check if stock entrypoint.sh exists and is executable
 if [ -f /entrypoint.sh ] && [ -x /entrypoint.sh ]; then
-    echo "🚀 Using entrypoint.sh"
-    # Make sure entrypoint.sh sees our environment variables
-    env > /tmp/firefly-env
+    echo "🚀 Executing stock Firefly III entrypoint.sh with proper environment"
+    # Export our environment variables to ensure they override any defaults
+    export APP_ENV=production
+    export APP_DEBUG=false
+    export APP_KEY
+    export DB_CONNECTION=mysql
+    export DB_HOST="${DB_HOST:-core-mariadb}"
+    export DB_PORT="${DB_PORT:-3306}"
+    export DB_DATABASE="${DB_DATABASE:-firefly}"
+    export DB_USERNAME="${DB_USERNAME:-firefly}"
+    export DB_PASSWORD="${DB_PASSWORD}"
+    
+    # Execute the original entrypoint script with all our environment variables
     exec /entrypoint.sh
-elif [ -x "$(command -v apache2-foreground)" ]; then
-    echo "🚀 Starting Apache web server"
-    exec apache2-foreground
-elif [ -f /var/www/html/artisan ]; then
-    echo "🚀 Starting Laravel application with built-in server"
-    start_application
 else
-    echo "❌ ERROR: Cannot find Firefly III application"
-    ls -la /var/www/html || echo "No /var/www/html directory"
-    exit 1
+    # Fallback to a simple PHP server if entrypoint.sh isn't available
+    echo "🔄 Running database migrations..."
+    cd /var/www/html
+    php artisan migrate --force
+    php artisan db:seed --force
+    php artisan firefly-iii:upgrade-database
+    
+    echo "🚀 Starting PHP server..."
+    exec php -S 0.0.0.0:8080 -t public
 fi
