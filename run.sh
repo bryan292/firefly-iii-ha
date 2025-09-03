@@ -23,7 +23,9 @@ if [ -f /data/options.json ]; then
     fi
 
     # Force the environment variables
-    export APP_KEY=$(cat /data/app_key)
+    if [ -f /data/app_key ]; then
+        export APP_KEY=$(cat /data/app_key)
+    fi
     export APP_ENV=production
     export DB_CONNECTION=mysql
     export DB_HOST=$(jq --raw-output '.db_host' /data/options.json)
@@ -32,14 +34,22 @@ if [ -f /data/options.json ]; then
     export DB_USERNAME=$(jq --raw-output '.db_user' /data/options.json)
     export DB_PASSWORD=$(jq --raw-output '.db_password' /data/options.json)
     
-    # Make environment variables available to the entrypoint.sh script
-    env > /tmp/firefly_env.sh
-    chmod +x /tmp/firefly_env.sh
+    # Create a healthcheck endpoint for Home Assistant
+    mkdir -p /var/www/html/public/healthcheck
+    cat > /var/www/html/public/healthcheck/index.php << 'EOF'
+<?php
+header('Content-Type: application/json');
+echo json_encode(['status' => 'ok', 'timestamp' => time()]);
+EOF
     
+    # Try to run our specialized Firefly-III run script for Home Assistant
+    if [ -f /firefly-iii/run.sh ]; then
+        echo "Executing Firefly III addon run script"
+        exec /firefly-iii/run.sh
     # Try to run the stock entrypoint with our environment
-    if [ -f /entrypoint.sh ]; then
+    elif [ -f /entrypoint.sh ]; then
         echo "Running stock entrypoint.sh with proper environment"
-        exec env $(cat /tmp/firefly_env.sh | xargs) /entrypoint.sh
+        exec /entrypoint.sh
     else
         echo "Starting PHP server directly (entrypoint.sh not found)"
         cd /var/www/html

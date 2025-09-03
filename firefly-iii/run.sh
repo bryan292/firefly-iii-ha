@@ -63,6 +63,14 @@ else
     php artisan db:seed --force
     php artisan firefly-iii:upgrade-database
     
+    # Create a healthcheck endpoint for Home Assistant
+    mkdir -p /var/www/html/public/healthcheck
+    cat > /var/www/html/public/healthcheck/index.php << 'EOF'
+<?php
+header('Content-Type: application/json');
+echo json_encode(['status' => 'ok', 'timestamp' => time()]);
+EOF
+    
     echo "🚀 Starting PHP server..."
     exec php -S 0.0.0.0:8080 -t public
 fi

@@ -1,6 +1,6 @@
 name: "Firefly III"
 description: "Firefly III personal finance manager, accessible via Home Assistant Ingress and backed by the MariaDB add-on."
-version: "0.2.3"
+version: "0.2.4"
 slug: "firefly-iii"
 init: false
 arch:
@@ -43,3 +43,4 @@ schema:
   php_memory_limit: "str"
 url: "https://www.firefly-iii.org/"
 documentation: "https://github.com/yourusername/hassio-addons/blob/main/firefly-iii/README.md"
+healthcheck: "http://localhost:8080/healthcheck"
