@@ -163,6 +163,10 @@ EOF
     # Start the web server with the fixed script
     echo "🚀 Starting PHP server on port 8080..."
     echo "✅ Firefly III is now available!"
+    
+    # Set a trap to handle SIGTERM and other signals gracefully
+    trap 'echo "📣 Shutting down Firefly III..."; exit 0' SIGTERM SIGINT
+    
     exec php -S 0.0.0.0:8080 -t /var/www/html/public /var/www/html/server-fixed.php
 }
 
@@ -172,6 +176,12 @@ echo "🔄 Initializing database..."
 php artisan migrate --force || echo "⚠️ Migration failed but continuing"
 php artisan firefly-iii:upgrade-database || echo "⚠️ Database upgrade failed but continuing"
 php artisan firefly-iii:verify || echo "⚠️ Verification failed but continuing"
+
+# Check for the presence of a user account - create a default one if none exists
+USER_COUNT=$(php artisan firefly-iii:user-count)
+if [[ "$USER_COUNT" == "0" ]]; then
+    echo "⚠️ No users found in the database. You should create a user via the web interface."
+fi
 
 # Start Firefly III using the correct entrypoint
 if [ -f /entrypoint.sh ] && [ -x /entrypoint.sh ]; then

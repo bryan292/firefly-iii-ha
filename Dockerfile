@@ -44,7 +44,11 @@ ENV TZ=UTC \
     MAIL_FROM=changeme@example.com \
     SITE_OWNER=changeme@example.com \
     APP_ENV=production \
-    APP_DEBUG=false
+    APP_DEBUG=false \
+    DISABLE_DEMO_USER=true \
+    CACHE_DRIVER=file \
+    SESSION_DRIVER=file \
+    ALLOW_CORS=true
 
 # Expose port
 EXPOSE 8080
