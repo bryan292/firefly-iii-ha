@@ -15,15 +15,17 @@ TRUSTED_PROXIES=$(jq --raw-output '.trusted_proxies // "**"' $CONFIG_PATH)
 TIMEZONE=$(jq --raw-output '.timezone // "UTC"' $CONFIG_PATH)
 PHP_MEMORY_LIMIT=$(jq --raw-output '.php_memory_limit // "512M"' $CONFIG_PATH)
 
+echo "🔧 Configuring Firefly III..."
+
 # Generate proper base64 APP_KEY - must be exactly 32 bytes long
 if [ -z "$APP_KEY_OPT" ]; then
     if [ -f /data/app_key ]; then
         APP_KEY=$(cat /data/app_key)
-        echo "Using stored APP_KEY from /data/app_key"
+        echo "✅ Using stored APP_KEY from /data/app_key"
     else
         # Generate a proper Laravel key (must be a 32-byte base64 string)
         APP_KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
-        echo "Generated new APP_KEY: $APP_KEY"
+        echo "🔑 Generated new APP_KEY: $APP_KEY"
         echo "$APP_KEY" > /data/app_key
     fi
 else
@@ -33,21 +35,25 @@ else
     else
         APP_KEY="$APP_KEY_OPT"
     fi
-    echo "Using APP_KEY from config"
+    echo "✅ Using APP_KEY from config"
 fi
 
 # Wait for database to be available
-echo "Waiting for database connection..."
+echo "⏳ Waiting for database connection..."
 timeout=60
 while ! nc -z $DB_HOST $DB_PORT; do
     timeout=$((timeout - 1))
     if [ $timeout -eq 0 ]; then
-        echo "Timed out waiting for database connection"
-        break
+        echo "❌ Timed out waiting for database connection"
+        echo "   Please check that the MariaDB addon is running and the database credentials are correct."
+        sleep 10
+        exit 1
     fi
-    echo "Waiting for database to be available... ($timeout seconds left)"
+    echo "⏳ Waiting for database to be available... ($timeout seconds left)"
     sleep 1
 done
+
+echo "✅ Database connection successful!"
 
 # Create .env file in Laravel format
 cat > /var/www/html/.env <<EOL
@@ -69,6 +75,7 @@ SITE_OWNER=changeme@example.com
 
 TRUSTED_PROXIES=${TRUSTED_PROXIES}
 TZ=${TIMEZONE}
+PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT}
 EOL
 
 # Export environment variables for PHP
@@ -87,8 +94,10 @@ export MAIL_FROM=changeme@example.com
 export SITE_OWNER=changeme@example.com
 export TRUSTED_PROXIES="$TRUSTED_PROXIES"
 export TZ="$TIMEZONE"
+export PHP_MEMORY_LIMIT="$PHP_MEMORY_LIMIT"
 
 # Fix permissions for Laravel
+echo "🔧 Setting up file permissions..."
 mkdir -p /var/www/html/storage/app
 mkdir -p /var/www/html/storage/framework/cache
 mkdir -p /var/www/html/storage/framework/sessions
@@ -98,17 +107,18 @@ chown -R www-data:www-data /var/www/html/storage
 chmod -R 775 /var/www/html/storage
 
 # Display the .env file (excluding password)
-echo "Created .env file with the following settings:"
+echo "✅ Created .env file with the following settings:"
 grep -v "PASSWORD" /var/www/html/.env
 
 # Define function to execute application using PHP's built-in server
 start_application() {
     cd /var/www/html
     
+    echo "🔄 Running database migrations..."
     # Try to run artisan commands without failing the script
-    php artisan migrate --force || echo "Migration failed but continuing"
-    php artisan firefly-iii:upgrade-database || echo "Database upgrade failed but continuing"
-    php artisan firefly-iii:verify || echo "Verification failed but continuing"
+    php artisan migrate --force || echo "⚠️ Migration failed but continuing"
+    php artisan firefly-iii:upgrade-database || echo "⚠️ Database upgrade failed but continuing"
+    php artisan firefly-iii:verify || echo "⚠️ Verification failed but continuing"
     
     # Create a simple PHP server script that avoids the urldecode issue
     cat > /var/www/html/server-fixed.php <<'EOF'
@@ -129,28 +139,30 @@ require_once $publicPath . '/index.php';
 EOF
 
     # Start the web server with the fixed script
-    echo "Starting PHP server on port 8080..."
+    echo "🚀 Starting PHP server on port 8080..."
+    echo "✅ Firefly III is now available!"
     exec php -S 0.0.0.0:8080 -t /var/www/html/public /var/www/html/server-fixed.php
 }
 
 # Run database migrations
 cd /var/www/html
-php artisan migrate --force || echo "Migration failed but continuing"
-php artisan firefly-iii:upgrade-database || echo "Database upgrade failed but continuing"
-php artisan firefly-iii:verify || echo "Verification failed but continuing"
+echo "🔄 Initializing database..."
+php artisan migrate --force || echo "⚠️ Migration failed but continuing"
+php artisan firefly-iii:upgrade-database || echo "⚠️ Database upgrade failed but continuing"
+php artisan firefly-iii:verify || echo "⚠️ Verification failed but continuing"
 
 # Start Firefly III using the correct entrypoint
 if [ -f /entrypoint.sh ] && [ -x /entrypoint.sh ]; then
-    echo "Using entrypoint.sh"
+    echo "🚀 Using entrypoint.sh"
     exec /entrypoint.sh
 elif [ -x "$(command -v apache2-foreground)" ]; then
-    echo "Starting Apache web server"
+    echo "🚀 Starting Apache web server"
     exec apache2-foreground
 elif [ -f /var/www/html/artisan ]; then
-    echo "Starting Laravel application with built-in server"
+    echo "🚀 Starting Laravel application with built-in server"
     start_application
 else
-    echo "ERROR: Cannot find Firefly III application"
+    echo "❌ ERROR: Cannot find Firefly III application"
     ls -la /var/www/html || echo "No /var/www/html directory"
     exit 1
 fi

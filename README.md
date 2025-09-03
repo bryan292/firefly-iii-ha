@@ -1,17 +1,28 @@
-# Home Assistant Add-on: Firefly III
+# Firefly III Add-on for Home Assistant
 
 ![Firefly III Logo](https://www.firefly-iii.org/static/img/logo-small.png)
 
-Firefly III is a self-hosted financial manager. It helps you track your money and make smarter financial decisions.
+This add-on provides [Firefly III](https://www.firefly-iii.org/), a free and open-source personal finance manager, for your Home Assistant instance.
 
-This add-on packages the official Firefly III Docker image (fireflyiii/core) and makes it easily accessible through Home Assistant with Ingress support.
+## About Firefly III
+
+Firefly III is a self-hosted financial manager that helps you track your money. It's designed to help you get a grip on your finances and gain insight into your spending patterns.
+
+Key features:
+- Track your income and expenses
+- Set up and manage budgets
+- Create financial goals
+- Track debts, credits, and savings
+- Generate detailed reports and charts
+- Multi-currency support
+- Import data from various financial institutions
 
 ## Installation
 
 1. **Add the repository to your Home Assistant instance**
    - Navigate to Settings → Add-ons → Add-on Store
    - Click the menu in the top right corner and select "Repositories"
-   - Add this repository URL: `https://github.com/bryan292/firefly-iii-ha`
+   - Add this repository URL: `https://github.com/yourusername/hassio-addons`
 
 2. **Install the MariaDB add-on (if not already installed)**
    - Find MariaDB in the add-on store and install it
@@ -46,25 +57,14 @@ This add-on packages the official Firefly III Docker image (fireflyiii/core) and
      db_name: firefly
      db_user: firefly
      db_password: YOUR_FIREFLY_PASSWORD
-     app_key: ""  # Leave empty for auto-generation
-     timezone: "America/New_York"
+     timezone: America/New_York
      ```
 
 5. **Start the add-on**
    - The first start may take a minute as database migrations run
    - Once started, click "OPEN WEB UI" to access Firefly III
 
-## Features
-
-- Uses the official Firefly III Docker image
-- Connects to Home Assistant's MariaDB add-on
-- Automatic database migrations on startup
-- Automatic APP_KEY generation for security
-- Scheduled cron jobs for recurring tasks
-- Accessible through Home Assistant's Ingress (no port forwarding needed)
-- Compatible with external reverse proxies
-
-## Configuration Options
+## Configuration
 
 | Option | Description |
 |--------|-------------|
@@ -89,14 +89,6 @@ On first run, the add-on will:
 
 You can then create your first user by going to the Firefly III interface.
 
-## Automated Tasks (Cron)
-
-Firefly III relies on regular cron jobs to process recurring transactions and other scheduled tasks. The add-on includes a cron service that runs:
-
-- `php artisan firefly-iii:cron` daily at 3:00 AM
-
-To change the schedule, you can SSH into the add-on and edit `/etc/cron.d/firefly-cron`.
-
 ## Using with External Reverse Proxies
 
 If you want to access Firefly III from outside your home network:
@@ -116,14 +108,14 @@ Firefly III stores all your financial data in the MariaDB database. The add-on a
 
 ## Troubleshooting
 
-### 502 Bad Gateway or Proxy Errors
-- Ensure `trusted_proxies` is set to "**"
-- Check that your reverse proxy is correctly passing the required headers
-
-### Database Connection Errors
+### Database Connection Issues
 - Verify your database credentials are correct
 - Confirm the MariaDB add-on is running
 - Check logs with "Show logs" in the add-on interface
+
+### 502 Bad Gateway or Proxy Errors
+- Ensure `trusted_proxies` is set to "**"
+- Check that your reverse proxy is correctly passing the required headers
 
 ### Permissions Issues
 - The add-on automatically sets proper permissions on startup
@@ -133,13 +125,10 @@ Firefly III stores all your financial data in the MariaDB database. The add-on a
 - Check for database migration errors in the logs
 - Verify database connectivity
 
-## Uninstalling
-
-Before uninstalling:
-
-1. Back up your data using Firefly III's built-in export feature
-2. If you want to completely remove all data, you'll need to drop the database in MariaDB
-
 ## Support
 
-If you have questions or need help, please open an issue on the GitHub repository.
+If you have questions or need help, please open an issue on the GitHub repository: [https://github.com/yourusername/hassio-addons](https://github.com/yourusername/hassio-addons)
+
+## License
+
+Firefly III is licensed under the AGPL-3.0 license. For more information see the [Firefly III GitHub repository](https://github.com/firefly-iii/firefly-iii).
