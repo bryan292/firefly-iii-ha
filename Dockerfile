@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y \
     jq \
     netcat-openbsd \
     openssl \
+    php-fpm \
+    nginx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -54,6 +56,9 @@ ENV TZ=UTC \
     SITE_OWNER=changeme@example.com \
     APP_ENV=production \
     APP_DEBUG=false
+
+# Create necessary directories for nginx
+RUN mkdir -p /var/log/nginx /run/nginx /tmp/nginx
 
 # Expose port
 EXPOSE 8080
