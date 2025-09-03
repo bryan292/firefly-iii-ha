@@ -72,21 +72,13 @@ header('Location: /');
 exit;
 EOF
 
-# Create a simple router to handle Home Assistant ingress
-cat > /var/www/html/public/index-ingress.php << 'EOF'
-<?php
-// Simple router for ingress support
-$uri = $_SERVER['REQUEST_URI'];
-
-// Handle basic auth or ingress auth
-if (strpos($uri, '/login') !== false) {
-    include 'ingress-auth.php';
-    exit;
-}
-
-// Forward to standard index.php
-include 'index.php';
-EOF
+ # Create a healthcheck endpoint for Home Assistant                                                                                               
+ mkdir -p /var/www/html/public/healthcheck                                                                                                        
+ cat > /var/www/html/public/healthcheck/index.php << 'EOF'                                                                                        
+ <?php                                                                                                                                            
+ header('Content-Type: application/json');                                                                                                        
+ echo json_encode(['status' => 'ok', 'timestamp' => time()]);                                                                                     
+ EOF    
 
 # Create a healthcheck endpoint for Home Assistant
 mkdir -p /var/www/html/public/healthcheck
@@ -98,4 +90,5 @@ EOF
 
 echo "🚀 Starting PHP server..."
 cd /var/www/html
-exec php -S 0.0.0.0:8080 -t public public/index-ingress.php
+# Start PHP server directly from the public directory to avoid security warnings
+exec php -S 0.0.0.0:8080 -t public  

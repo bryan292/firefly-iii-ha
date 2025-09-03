@@ -90,6 +90,7 @@ EOF
     else
         echo "Starting PHP server directly (entrypoint.sh not found)"
         cd /var/www/html
+        # Use -t public to set the document root to the public directory
         exec php -S 0.0.0.0:8080 -t public
     fi
 else
@@ -103,6 +104,7 @@ else
             exec /entrypoint.sh
         else
             cd /var/www/html
+            # Use -t public to set the document root to the public directory
             exec php -S 0.0.0.0:8080 -t public
         fi
     fi
