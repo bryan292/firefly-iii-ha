@@ -6,22 +6,12 @@ Firefly III is a self-hosted financial manager. It helps you track your money an
 
 This add-on packages the official Firefly III Docker image (fireflyiii/core) and makes it easily accessible through Home Assistant with Ingress support.
 
-## Features
-
-- Uses the official Firefly III Docker image
-- Connects to Home Assistant's MariaDB add-on
-- Automatic database migrations on startup
-- Automatic APP_KEY generation for security
-- Scheduled cron jobs for recurring tasks
-- Accessible through Home Assistant's Ingress (no port forwarding needed)
-- Compatible with external reverse proxies
-
 ## Installation
 
 1. **Add the repository to your Home Assistant instance**
    - Navigate to Settings → Add-ons → Add-on Store
    - Click the menu in the top right corner and select "Repositories"
-   - Add this repository URL
+   - Add this repository URL: `https://github.com/bryan292/firefly-iii-ha`
 
 2. **Install the MariaDB add-on (if not already installed)**
    - Find MariaDB in the add-on store and install it
@@ -63,6 +53,16 @@ This add-on packages the official Firefly III Docker image (fireflyiii/core) and
 5. **Start the add-on**
    - The first start may take a minute as database migrations run
    - Once started, click "OPEN WEB UI" to access Firefly III
+
+## Features
+
+- Uses the official Firefly III Docker image
+- Connects to Home Assistant's MariaDB add-on
+- Automatic database migrations on startup
+- Automatic APP_KEY generation for security
+- Scheduled cron jobs for recurring tasks
+- Accessible through Home Assistant's Ingress (no port forwarding needed)
+- Compatible with external reverse proxies
 
 ## Configuration Options
 
