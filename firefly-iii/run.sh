@@ -72,14 +72,6 @@ header('Location: /');
 exit;
 EOF
 
- # Create a healthcheck endpoint for Home Assistant                                                                                               
- mkdir -p /var/www/html/public/healthcheck                                                                                                        
- cat > /var/www/html/public/healthcheck/index.php << 'EOF'                                                                                        
- <?php                                                                                                                                            
- header('Content-Type: application/json');                                                                                                        
- echo json_encode(['status' => 'ok', 'timestamp' => time()]);                                                                                     
- EOF    
-
 # Create a healthcheck endpoint for Home Assistant
 mkdir -p /var/www/html/public/healthcheck
 cat > /var/www/html/public/healthcheck/index.php << 'EOF'
@@ -91,4 +83,4 @@ EOF
 echo "🚀 Starting PHP server..."
 cd /var/www/html
 # Start PHP server directly from the public directory to avoid security warnings
-exec php -S 0.0.0.0:8080 -t public  
+exec php -S 0.0.0.0:8080 -t public
