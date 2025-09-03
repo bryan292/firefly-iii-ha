@@ -1,6 +1,6 @@
 name: "Firefly III"
 description: "Firefly III personal finance manager, accessible via Home Assistant Ingress and backed by the MariaDB add-on."
-version: "0.1.0"
+version: "0.1.1"
 slug: "firefly-iii"
 init: false
 arch:
@@ -18,7 +18,8 @@ homeassistant_api: false
 ports: {}
 services:
   - mysql:want
-image: "ghcr.io/home-assistant/{arch}-addon-firefly-iii"
+build_from:
+  amd64: "fireflyiii/core:latest"
 options:
   db_host: "core-mariadb"
   db_port: 3306
