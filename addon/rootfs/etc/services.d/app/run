@@ -2,6 +2,12 @@
 
 echo "Starting Firefly III application..."
 
-# The fireflyiii/core image uses supervisor to manage nginx and php-fpm
-# We need to exec the original entry point to maintain proper process management
-exec /entrypoint.sh
+# The firefly-iii image uses Apache
+if [ -x "/entrypoint.sh" ]; then
+    exec /entrypoint.sh
+elif [ -x "/init.sh" ]; then
+    exec /init.sh
+else
+    # Fallback to starting Apache directly
+    exec apache2-foreground
+fi

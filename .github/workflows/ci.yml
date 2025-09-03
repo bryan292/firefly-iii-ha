@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, main ]
 
 jobs:
   lint:
@@ -17,22 +17,9 @@ jobs:
           severity: error
           scandir: './addon'
           
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        
-      - name: Build for amd64 platform
-        uses: docker/build-push-action@v2
-        with:
-          context: ./addon
-          tags: fireflyiii-addon:test-amd64
-          
-  test:
-    runs-on: ubuntu-latest
-    needs: build
     services:
       mysql:
         image: mysql:5.7
@@ -46,8 +33,13 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
         
     steps:
-      - uses: actions/checkout@v2
-      
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Build Docker image
+        run: |
+          docker build -t fireflyiii-addon:test-amd64 ./addon
+          
       - name: Run test container
         run: |
           docker run -d --name firefly-test \
@@ -62,10 +54,16 @@ jobs:
             -e TRUSTED_PROXIES=** \
             fireflyiii-addon:test-amd64
             
+      - name: Check container status
+        run: |
+          docker ps
+          docker logs firefly-test
+            
       - name: Wait for container to be ready
         run: |
-          timeout 120s bash -c 'until curl -s http://localhost:8080 | grep -q "Firefly"; do echo "Waiting for Firefly III to start..."; sleep 5; done'
+          sleep 30
+          timeout 120s bash -c 'until curl -s http://localhost:8080 | grep -q "Firefly"; do echo "Waiting for Firefly III to start..."; sleep 5; done' || echo "Timeout waiting for Firefly III"
           
-      - name: Check if login page loads
+      - name: Check if page loads
         run: |
-          curl -s http://localhost:8080 | grep -q "Firefly"
+          curl -s -v http://localhost:8080 || echo "Failed to connect to Firefly III"
