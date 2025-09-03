@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bash
+
+echo "Starting Firefly III application..."
+
+# The fireflyiii/core image uses supervisor to manage nginx and php-fpm
+# We need to exec the original entry point to maintain proper process management
+exec /entrypoint.sh

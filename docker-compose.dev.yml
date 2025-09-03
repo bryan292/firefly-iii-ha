@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  mariadb:
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: devroot
+      MYSQL_DATABASE: homeassistant
+      MYSQL_USER: homeassistant
+      MYSQL_PASSWORD: devpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+
+  firefly:
+    build:
+      context: ./addon
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mariadb
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_DATABASE=homeassistant
+      - DB_USERNAME=homeassistant
+      - DB_PASSWORD=devpass
+      - APP_KEY=
+      - TRUSTED_PROXIES=**
+      - TZ=UTC
+      - PHP_MEMORY_LIMIT=512M
+    volumes:
+      - firefly_upload:/var/www/html/storage/upload
+      - firefly_data:/data
+
+volumes:
+  mariadb_data:
+  firefly_upload:
+  firefly_data:
