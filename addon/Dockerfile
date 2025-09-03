@@ -1,5 +1,9 @@
 FROM fireflyiii/core:latest
 
+# Create directory structure first
+USER root
+RUN mkdir -p /etc/cont-init.d /etc/services.d/app /etc/services.d/cron
+
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
     tini \
@@ -16,6 +20,11 @@ COPY rootfs /
 # Copy run script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
+
+# Ensure directories are writable
+RUN mkdir -p /data && \
+    chmod -R 755 /etc/cont-init.d /etc/services.d && \
+    chmod +x /etc/cont-init.d/* /etc/services.d/*/run
 
 # Set environment variables
 ENV TZ=UTC \
