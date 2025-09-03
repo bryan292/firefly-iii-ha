@@ -3,14 +3,13 @@ FROM fireflyiii/core:latest
 # Create directory structure first
 USER root
 
-# Install additional dependencies without PHP-FPM
+# Install additional dependencies
 RUN apt-get update && apt-get install -y \
     cron \
     bash \
     jq \
     netcat-openbsd \
     openssl \
-    nginx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -46,9 +45,6 @@ ENV TZ=UTC \
     SITE_OWNER=changeme@example.com \
     APP_ENV=production \
     APP_DEBUG=false
-
-# Create necessary directories for nginx
-RUN mkdir -p /var/log/nginx /run/nginx /tmp/nginx
 
 # Expose port
 EXPOSE 8080

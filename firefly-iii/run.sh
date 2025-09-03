@@ -6,8 +6,8 @@ CONFIG_PATH=/data/options.json
 # Get options from config
 DB_HOST=$(jq --raw-output '.db_host // "core-mariadb"' $CONFIG_PATH)
 DB_PORT=$(jq --raw-output '.db_port // 3306' $CONFIG_PATH)
-DB_NAME=$(jq --raw-output '.db_name // "homeassistant"' $CONFIG_PATH)
-DB_USER=$(jq --raw-output '.db_user // "homeassistant"' $CONFIG_PATH)
+DB_NAME=$(jq --raw-output '.db_name // "firefly"' $CONFIG_PATH)
+DB_USER=$(jq --raw-output '.db_user // "firefly"' $CONFIG_PATH)
 DB_PASSWORD=$(jq --raw-output '.db_password // ""' $CONFIG_PATH)
 APP_KEY_OPT=$(jq --raw-output '.app_key // ""' $CONFIG_PATH)
 APP_URL=$(jq --raw-output '.app_url // ""' $CONFIG_PATH)
@@ -35,6 +35,19 @@ else
     fi
     echo "Using APP_KEY from config"
 fi
+
+# Wait for database to be available
+echo "Waiting for database connection..."
+timeout=60
+while ! nc -z $DB_HOST $DB_PORT; do
+    timeout=$((timeout - 1))
+    if [ $timeout -eq 0 ]; then
+        echo "Timed out waiting for database connection"
+        break
+    fi
+    echo "Waiting for database to be available... ($timeout seconds left)"
+    sleep 1
+done
 
 # Create .env file in Laravel format
 cat > /var/www/html/.env <<EOL
