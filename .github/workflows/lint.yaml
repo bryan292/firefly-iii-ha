@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: 🧹 Run Hadolint
         uses: brpaz/hadolint-action@v1.5.0
 
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: 🧹 Run JQ
         run: |
           shopt -s globstar
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: 🧹 Run mdl
         uses: actionshub/markdownlint@v2.0.2
 
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: 🧹 Run Shellcheck
         uses: ludeeus/action-shellcheck@1.1.0
         env:
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: 🧹 Run YAMLLint
         uses: frenck/action-yamllint@v1.1
 
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: 🧹 Run Prettier
         uses: creyD/prettier_action@v4.2
         with:
