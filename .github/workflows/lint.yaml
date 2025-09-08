@@ -68,6 +68,6 @@ jobs:
       - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v3
       - name: 🧹 Run Prettier
-        uses: creyD/prettier_action@v4.2
+        uses: creyD/prettier_action@v4.6
         with:
           prettier_options: --write **/*.{json,js,md,yaml}
