@@ -49,10 +49,9 @@ if [ ! -f "${ENV_FILE}" ]; then
   cp .env.example "${ENV_FILE}" || touch "${ENV_FILE}"
 fi
 
-# Ensure storage exists and is writable
+# Ensure storage exists
 mkdir -p "${STORAGE_DIR}"
-echo "Ensuring proper storage directory permissions..."
-chown -R www-data:www-data "${STORAGE_DIR}" || true
+echo "Ensuring storage directory exists..."
 
 # Update .env with options (idempotent: use crudini-like sed replaces)
 set_kv() {
@@ -101,77 +100,88 @@ else
   fi
 fi
 
-# Link persistent storage into app dir
-echo "Setting up storage directory symlink..."
-if [ ! -L "${APP_DIR}/storage" ]; then
-  # If storage exists and is a directory but not a symlink, we need to handle it carefully
+# Simpler approach for storage directory symlink
+echo "Setting up storage directory symlink using safer approach..."
+
+# Create all subdirectories in persistent storage first
+mkdir -p "${STORAGE_DIR}/app" "${STORAGE_DIR}/build" "${STORAGE_DIR}/database" \
+         "${STORAGE_DIR}/debugbar" "${STORAGE_DIR}/export" "${STORAGE_DIR}/framework" \
+         "${STORAGE_DIR}/logs" "${STORAGE_DIR}/upload"
+
+# First, copy the upstream storage permissions and content (if this is first run)
+if [ -d "${APP_DIR}/storage" ] && [ ! -L "${APP_DIR}/storage" ]; then
+  echo "Copying existing storage content and permissions to persistent storage..."
+  
+  # Copy existing content recursively, preserving attributes
+  cp -a "${APP_DIR}/storage/." "${STORAGE_DIR}/" 2>/dev/null || true
+  
+  # Now, instead of deleting the old directory (which can be busy),
+  # let's use a different approach - move the original out of the way
+  echo "Renaming original storage directory..."
   if [ -d "${APP_DIR}/storage" ]; then
-    # First try to safely unmount any busy resources
-    for dir in "${APP_DIR}/storage/"*; do
-      if [ -d "$dir" ]; then
-        # Try to find and kill processes using these directories
-        echo "Checking processes using $dir..."
-        fuser -k "$dir" >/dev/null 2>&1 || true
-        
-        # For upload directory specifically (common issue)
-        if [[ "$dir" == *"/upload" ]]; then
-          echo "Special handling for upload directory..."
-          # Ensure no lingering PHP processes are using this directory
-          pkill -f "php.*upload" >/dev/null 2>&1 || true
-        fi
-      fi
-    done
-    
-    # Wait a moment for processes to terminate
-    sleep 2
-    
-    # Move any existing content to our persistent location first
-    echo "Moving existing content to persistent storage..."
-    cp -a "${APP_DIR}/storage/"* "${STORAGE_DIR}/" || true
-    
-    # Remove the original directory - use force if needed with careful checks
-    echo "Removing original storage directory..."
-    rm -rf "${APP_DIR}/storage" || {
-      echo "Warning: Could not remove storage directory cleanly."
-      echo "Trying alternative approach..."
-      
-      # If rmdir fails due to "device or resource busy", try alternative
-      # Find and kill all processes that might be using the directory
-      lsof "${APP_DIR}/storage" >/dev/null 2>&1 || true
-      
-      # Remove contents one by one
-      find "${APP_DIR}/storage" -type f -delete || true
-      find "${APP_DIR}/storage" -type d -empty -delete || true
-      
-      # If directory still exists, try more aggressive approach
-      if [ -d "${APP_DIR}/storage" ]; then
-        echo "Using mount tricks to remove busy directory..."
-        # Temporarily mount an empty directory over the busy one
-        mkdir -p /tmp/empty
-        mount --bind /tmp/empty "${APP_DIR}/storage"
-        umount "${APP_DIR}/storage"
-        rmdir "${APP_DIR}/storage" || true
+    mv "${APP_DIR}/storage" "${APP_DIR}/storage.orig" 2>/dev/null || {
+      echo "Could not rename storage directory, using alternate method..."
+      # If we can't rename, try to at least create the symlink for new content
+      mkdir -p "${APP_DIR}/storage.new"
+      ln -sfn "${STORAGE_DIR}" "${APP_DIR}/storage.new"
+      # Try to use mount bind to overlay the symlink on the original directory
+      if command -v mount >/dev/null 2>&1; then
+        echo "Attempting bind mount overlay..."
+        mount --bind "${APP_DIR}/storage.new" "${APP_DIR}/storage" 2>/dev/null || true
       fi
     }
   fi
-  
-  # Now create the symlink
-  echo "Creating symlink from ${STORAGE_DIR} to ${APP_DIR}/storage"
-  ln -s "${STORAGE_DIR}" "${APP_DIR}/storage"
 fi
 
-# Double-check the symlink exists and is valid
-if [ ! -L "${APP_DIR}/storage" ] || [ ! -d "$(readlink "${APP_DIR}/storage")" ]; then
-  echo "Error: Storage directory symlink is missing or invalid!"
-  echo "Attempting emergency recovery..."
-  rm -f "${APP_DIR}/storage"
-  ln -s "${STORAGE_DIR}" "${APP_DIR}/storage"
+# Create the symlink (this works if original was successfully renamed/moved)
+if [ ! -e "${APP_DIR}/storage" ]; then
+  echo "Creating storage symlink..."
+  ln -sfn "${STORAGE_DIR}" "${APP_DIR}/storage"
+elif [ ! -L "${APP_DIR}/storage" ]; then
+  # If storage still exists and isn't a symlink, we'll try one more approach
+  echo "Using PHP to operate on storage directory..."
+  php -r "
+    // Create storage directories if they don't exist
+    @mkdir('${STORAGE_DIR}', 0755, true);
+    
+    // Get the current directory
+    \$appDir = '${APP_DIR}';
+    \$storageDir = '${STORAGE_DIR}';
+    
+    // If the storage directory exists and is not a symlink, try to handle it
+    if (is_dir(\$appDir . '/storage') && !is_link(\$appDir . '/storage')) {
+      // Copy any existing content
+      \$files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(\$appDir . '/storage', RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+      );
+      
+      foreach (\$files as \$fileinfo) {
+        \$target = \$storageDir . '/' . substr(\$fileinfo->getPathname(), strlen(\$appDir . '/storage/'));
+        if (\$fileinfo->isDir()) {
+          @mkdir(\$target, 0755, true);
+        } else {
+          @copy(\$fileinfo->getPathname(), \$target);
+        }
+      }
+      
+      // Rename the original (this might work where shell commands failed)
+      @rename(\$appDir . '/storage', \$appDir . '/storage.bak');
+      
+      // Create the symlink
+      if (!file_exists(\$appDir . '/storage')) {
+        @symlink(\$storageDir, \$appDir . '/storage');
+      }
+    }
+    
+    echo 'PHP storage handling complete';
+  "
 fi
 
-# Permissions
+# Set permissions on the storage directory
 echo "Setting final permissions..."
-chown -R www-data:www-data "${HA_DATA_DIR}" || true
-chown -R www-data:www-data "${APP_DIR}/storage" || true
+chmod -R 755 "${STORAGE_DIR}" 2>/dev/null || true
+chown -R www-data:www-data "${STORAGE_DIR}" 2>/dev/null || true
 
 # Optimize config/cache using the persistent env file
 export APP_ENV=production
