@@ -1,9 +1,0 @@
-.aider*
-.vscode
-.devcontainer
-__pycache__
-*.pyc
-*.log
-*.db
-*.sqlite
-node_modules/
