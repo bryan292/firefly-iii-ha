@@ -34,5 +34,4 @@ def send_static(path):
 
 if __name__ == '__main__':
     logger.info(f"Starting Flask application on port {PORT}")
-    # Setting application root to empty means it will work with any proxy path
-    app.run(host='0.0.0.0', port=PORT, application_root='/')
+    app.run(host='0.0.0.0', port=PORT)
