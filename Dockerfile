@@ -17,4 +17,4 @@ RUN chmod +x /run.sh
 EXPOSE 8099
 
 # Use run.sh as entrypoint
-CMD ["/run.sh"]
+CMD ["/bin/sh", "/run.sh"]

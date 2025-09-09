@@ -1,6 +1,6 @@
 name: "Simple Web UI"
 slug: "simple-webui"
-version: "0.1.0"
+version: "0.1.1"
 description: "Minimal add-on that serves a simple web page via Ingress."
 url: "https://github.com/home-assistant/addons-example"
 arch:
