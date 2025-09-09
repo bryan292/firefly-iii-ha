@@ -2,8 +2,11 @@ name: "Firefly III (Ingress)"
 slug: "firefly-iii"
 version: "1.0.0"
 description: "Firefly III personal finance manager as a Home Assistant add-on with Ingress."
+url: "https://github.com/bryan292/firefly-iii-ha"
 arch:
   - amd64
+  - aarch64
+  - armv7
 startup: application
 boot: auto
 ingress: true
@@ -12,9 +15,7 @@ panel_icon: "mdi:finance"
 panel_title: "Firefly III"
 host_network: false
 homeassistant_api: false
-# Use upstream multi-arch image so Supervisor pulls correct arch
-image: "fireflyiii/core:latest"
-# Persist app state/config under /data/firefly (bind from HA add-on /data)
+init: false
 map:
   - data:rw
 options:
@@ -37,5 +38,5 @@ schema:
   timezone: str
   site_owner: str
   generate_app_key: bool
-# Grant a little time on first boot for DB readiness
+image: "fireflyiii/core:latest"
 timeout: 600
