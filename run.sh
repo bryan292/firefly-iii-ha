@@ -47,6 +47,14 @@ STORAGE_DIR="${HA_DATA_DIR}/storage"
 if [ ! -f "${ENV_FILE}" ]; then
   echo "Creating new .env file from example..."
   cp .env.example "${ENV_FILE}" || touch "${ENV_FILE}"
+  
+  # Generate an APP_KEY right away for a new installation
+  if [ "${GENERATE_APP_KEY}" = "true" ]; then
+    echo "Generating APP_KEY for new installation..."
+    NEW_APP_KEY=$(php -r "echo 'base64:' . base64_encode(random_bytes(32));")
+    echo "Generated key: ${NEW_APP_KEY}"
+    echo "APP_KEY=${NEW_APP_KEY}" >> "${ENV_FILE}"
+  fi
 fi
 
 # Ensure storage exists
@@ -86,18 +94,22 @@ set_kv DB_PASSWORD "${DB_PASSWORD}"
 # Mail defaults (no SMTP by default)
 set_kv MAIL_MAILER "log"
 
-# Ensure APP_KEY exists
-if grep -q "^APP_KEY=" "${ENV_FILE}"; then
-  if [ "${GENERATE_APP_KEY}" = "true" ] && [ -z "$(grep '^APP_KEY=' "${ENV_FILE}" | cut -d= -f2-)" ]; then
-    echo "Generating new APP_KEY..."
-    php artisan key:generate --force --no-ansi --env-file "${ENV_FILE}"
-  fi
-else
+# Ensure APP_KEY exists and has a value
+if ! grep -q "^APP_KEY=" "${ENV_FILE}" || [ -z "$(grep '^APP_KEY=' "${ENV_FILE}" | cut -d= -f2-)" ]; then
   if [ "${GENERATE_APP_KEY}" = "true" ]; then
-    echo "APP_KEY not found, creating and generating..."
-    echo "APP_KEY=" >> "${ENV_FILE}"
-    php artisan key:generate --force --no-ansi --env-file "${ENV_FILE}"
+    echo "APP_KEY missing or empty, generating manually..."
+    NEW_APP_KEY=$(php -r "echo 'base64:' . base64_encode(random_bytes(32));")
+    echo "Generated key: ${NEW_APP_KEY}"
+    set_kv APP_KEY "${NEW_APP_KEY}"
   fi
+fi
+
+# Double-check APP_KEY exists to avoid Laravel errors
+if ! grep -q "^APP_KEY=" "${ENV_FILE}" || [ -z "$(grep '^APP_KEY=' "${ENV_FILE}" | cut -d= -f2-)" ]; then
+  echo "WARNING: APP_KEY is still missing or empty after attempted generation."
+  echo "Generating emergency APP_KEY..."
+  EMERGENCY_KEY="base64:$(openssl rand -base64 32)"
+  set_kv APP_KEY "${EMERGENCY_KEY}"
 fi
 
 # Simpler approach for storage directory symlink
@@ -107,6 +119,7 @@ echo "Setting up storage directory symlink using safer approach..."
 mkdir -p "${STORAGE_DIR}/app" "${STORAGE_DIR}/build" "${STORAGE_DIR}/database" \
          "${STORAGE_DIR}/debugbar" "${STORAGE_DIR}/export" "${STORAGE_DIR}/framework" \
          "${STORAGE_DIR}/logs" "${STORAGE_DIR}/upload"
+mkdir -p "${STORAGE_DIR}/framework/cache" "${STORAGE_DIR}/framework/sessions" "${STORAGE_DIR}/framework/views"
 
 # First, copy the upstream storage permissions and content (if this is first run)
 if [ -d "${APP_DIR}/storage" ] && [ ! -L "${APP_DIR}/storage" ]; then
@@ -187,23 +200,34 @@ chown -R www-data:www-data "${STORAGE_DIR}" 2>/dev/null || true
 export APP_ENV=production
 export PORT="${PORT}"
 
+# Load environment variables from .env file
+if [ -f "${ENV_FILE}" ]; then
+  echo "Loading environment variables from .env file..."
+  set -o allexport
+  source "${ENV_FILE}"
+  set +o allexport
+fi
+
 # Use the env file for artisan commands
 echo "Clearing and caching configuration..."
-php artisan config:clear --no-ansi --env-file "${ENV_FILE}" || true
-php artisan cache:clear --no-ansi --env-file "${ENV_FILE}" || true
-php artisan config:cache --no-ansi --env-file "${ENV_FILE}" || true
+php artisan config:clear --no-ansi || true
+php artisan cache:clear --no-ansi || true
+php artisan config:cache --no-ansi || true
 
 # Run migrations (retry for DB readiness)
 echo "Running database migrations..."
 tries=0
-until php artisan migrate --force --no-ansi --env-file "${ENV_FILE}" || [ $tries -ge 15 ]; do
+until php artisan migrate --force --no-ansi || [ $tries -ge 15 ]; do
   tries=$((tries+1))
   echo "DB not ready... retry ${tries}/15"
   sleep 4
 done
 
-# Start the upstream web server stack.
-echo "Starting Firefly III web server..."
-# The official image uses supervisord to run nginx+php-fpm via /entrypoint.sh
-# We exec it so PID 1 is replaced (signals handled correctly).
-exec /entrypoint.sh
+# Start PHP-FPM and Nginx services directly
+echo "Starting Firefly III web services..."
+
+# Start PHP-FPM
+php-fpm -D
+
+# Start nginx in foreground
+nginx -g "daemon off;"

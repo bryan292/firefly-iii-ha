@@ -15,5 +15,5 @@ ENV HA_DATA_DIR=/data/firefly \
     PORT=8080
 
 EXPOSE 8080
-# Use our wrapper which will prep .env/storage then hand off to the upstream entrypoint
+# Use our wrapper directly (no upstream entrypoint)
 ENTRYPOINT ["/usr/local/bin/ha-run.sh"]
