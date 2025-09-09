@@ -1,19 +1,41 @@
-name: "Simple Web UI"
-slug: "simple-webui"
-version: "0.1.1"
-description: "Minimal add-on that serves a simple web page via Ingress."
-url: "https://github.com/home-assistant/addons-example"
+name: "Firefly III (Ingress)"
+slug: "firefly-iii"
+version: "1.0.0"
+description: "Firefly III personal finance manager as a Home Assistant add-on with Ingress."
 arch:
   - amd64
-  - aarch64
-  - armv7
 startup: application
 boot: auto
 ingress: true
-ingress_port: 8099
-panel_icon: "mdi:web"
+ingress_port: 8080
+panel_icon: "mdi:finance"
+panel_title: "Firefly III"
 host_network: false
 homeassistant_api: false
-init: false
-options: {}
-schema: {}
+# Use upstream multi-arch image so Supervisor pulls correct arch
+image: "fireflyiii/core:latest"
+# Persist app state/config under /data/firefly (bind from HA add-on /data)
+map:
+  - data:rw
+options:
+  db_host: "127.0.0.1"
+  db_port: 3306
+  db_name: "firefly"
+  db_user: "firefly"
+  db_password: ""
+  app_url: ""
+  timezone: "UTC"
+  site_owner: "owner@example.com"
+  generate_app_key: true
+schema:
+  db_host: str
+  db_port: int
+  db_name: str
+  db_user: str
+  db_password: password
+  app_url: str?
+  timezone: str
+  site_owner: str
+  generate_app_key: bool
+# Grant a little time on first boot for DB readiness
+timeout: 600

@@ -1,47 +1,25 @@
-# Simple Web UI
+# Firefly III (Home Assistant Add-on)
 
-A minimal Home Assistant add-on that provides a simple web UI via Ingress.
+This add-on packages Firefly III for Home Assistant with Ingress (open it via Supervisor).
 
-## Installation
+## Install
+1. On your Home Assistant host, create: `/addons/local/firefly-iii`
+2. Copy all files from this repository there.
+3. Home Assistant → Settings → Add-ons → Add-on Store → (⋮) → Reload.
+4. Find **Firefly III (Ingress)** under "Local add-ons", click **Install**.
+5. Configure the add-on options to match your MySQL/MariaDB add-on:
+   - **db_host**, **db_port**, **db_name**, **db_user**, **db_password**
+   - Optionally set **timezone**, **site_owner**, **app_url**.
+6. Start the add-on, then click **OPEN** to access Firefly III.
 
-### Local Installation
-
-1. On your Home Assistant host, create the folder structure:
-   ```
-   /addons/local/simple-webui/
-   ```
-
-2. Copy all files from this repository to that folder.
-
-3. In Home Assistant, navigate to:
-   **Settings** → **Add-ons** → **Add-on Store** → Click the menu in the top right → **Reload**
-
-4. Find "Simple Web UI" under "Local add-ons", click Install.
-
-5. Start the add-on and click **OPEN** to access the UI through Ingress.
-
-## Usage
-
-Once installed, you can:
-
-- Access the web UI directly from Home Assistant's Supervisor panel by clicking the **OPEN** button
-- Use the health check endpoint at `/healthz` to verify the app is running
+## Notes
+- First start may take longer while the database initializes and migrations run.
+- Data persists under `/data/firefly` (including `.env` and `storage/`).
+- If you later change DB credentials, stop the add-on, update options, start again.
+- To reset the app key, set `generate_app_key: true` and blank `APP_KEY` in `/data/firefly/.env` (advanced).
 
 ## Troubleshooting
-
-- If the **OPEN** button is disabled, ensure that the add-on is started.
-- Check the add-on logs for the message "Starting Flask application on port 8099" to confirm the web server started correctly.
-- Remember that Ingress uses a tunneled path - avoid using absolute URLs in your HTML/CSS/JS.
-- If you make changes to the add-on files, you'll need to:
-  1. Uninstall the add-on
-  2. Reload the add-on store
-  3. Install the add-on again
-  
-  Alternatively, use the **Rebuild** option in the add-on page if available.
-
-## Features
-
-- Simple Flask web application
-- Accessible via Home Assistant's Ingress
-- Health check endpoint at `/healthz`
-- Multi-architecture support (amd64, aarch64, armv7)
+- If **OPEN** is disabled, ensure the add-on is started and no errors appear in logs.
+- DB connection errors: verify host/port/auth and that your DB add-on is running.
+- Path/URL issues behind Ingress: leave `app_url` blank or set it to your external URL (reverse proxy must forward headers; `TRUSTED_PROXIES` is set to `**`).
+- To rebuild after changes: Uninstall → Reload → Install (or use Rebuild if available).

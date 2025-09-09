@@ -1,20 +1,16 @@
-FROM python:3.12-alpine
+# Minimal wrapper to inject HA-specific bootstrap; reuse official image
+FROM fireflyiii/core:latest
 
-# Set the working directory
-WORKDIR /app
+# Add our bootstrap script(s)
+COPY run.sh /usr/local/bin/ha-run.sh
+RUN chmod +x /usr/local/bin/ha-run.sh
 
-# Copy requirements first for better caching
-COPY app/requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Ensure a writable data volume inside the container mapped to HA /data
+# We'll store .env and storage here, then symlink into the app dir.
+ENV HA_DATA_DIR=/data/firefly \
+    APP_DIR=/var/www/html \
+    PORT=8080
 
-# Copy the rest of the application
-COPY app/ /app/
-
-# Make run.sh executable
-COPY run.sh /
-RUN chmod +x /run.sh
-
-EXPOSE 8099
-
-# Use run.sh as entrypoint
-CMD ["/bin/sh", "/run.sh"]
+EXPOSE 8080
+# Use our wrapper which will prep .env/storage then hand off to the upstream entrypoint
+ENTRYPOINT ["/usr/local/bin/ha-run.sh"]

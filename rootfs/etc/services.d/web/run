@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bash
+# This is an optional file for s6-overlay
+# For simplicity, we're using the upstream entrypoint in run.sh
+# This file is kept for reference if a custom service runner is needed later
+exit 0
