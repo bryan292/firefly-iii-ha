@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Web UI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Web UI (Ingress)</h1>
+        
+        <p>
+            This is a minimal Flask application running inside Home Assistant via Ingress.
+            The add-on is working correctly if you can see this page!
+        </p>
+        
+        <p>
+            <a href="./healthz">Check health endpoint</a>
+        </p>
+    </div>
+</body>
+</html>
