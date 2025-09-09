@@ -38,5 +38,3 @@ schema:
   timezone: str
   site_owner: str
   generate_app_key: bool
-image: "fireflyiii/core"
-timeout: 300

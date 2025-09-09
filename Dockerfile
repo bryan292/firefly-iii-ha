@@ -1,5 +1,5 @@
 # Minimal wrapper to inject HA-specific bootstrap; reuse official image
-FROM fireflyiii/core:latest
+FROM fireflyiii/core:version-6.0.30
 
 # Add our bootstrap script(s)
 COPY run.sh /usr/local/bin/ha-run.sh

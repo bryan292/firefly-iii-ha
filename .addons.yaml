@@ -4,4 +4,4 @@ addons:
   firefly-iii:
     repository: bryan292/firefly-iii-ha
     target: firefly-iii
-    image: fireflyiii/core
+    image: ghcr.io/home-assistant/{arch}-addon-firefly-iii
