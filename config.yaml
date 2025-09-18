@@ -1,6 +1,6 @@
 name: "Firefly III"
 slug: "firefly-iii"
-version: "0.0.1"
+version: "0.0.2"
 description: "Firefly III personal finance manager as a Home Assistant add-on with Ingress."
 url: "https://github.com/bryan292/firefly-iii-ha"
 documentation: "https://github.com/bryan292/firefly-iii-ha#readme"
