@@ -1,0 +1,126 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  release:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version
+        id: version
+        run: |
+          set -euo pipefail
+          current=$(grep '^version:' config.yaml | sed -E 's/version: "?([0-9]+\.[0-9]+\.[0-9]+)"?/\1/')
+          if [ -z "$current" ]; then
+            current="1.0.0"
+          fi
+          IFS='.' read -r major minor patch <<<"$current"
+          patch=$((patch + 1))
+          next="${major}.${minor}.${patch}"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version in config
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp)
+          awk -v version="$VERSION" '
+            BEGIN { updated = 0 }
+            /^version:/ {
+              printf "version: \"%s\"\n", version
+              updated = 1
+              next
+            }
+            { print }
+            END {
+              if (!updated) {
+                printf "version: \"%s\"\n", version
+              }
+            }
+          ' config.yaml >"$tmp"
+          mv "$tmp" config.yaml
+          git add config.yaml
+
+      - name: Ensure changelog entry
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u '+%Y-%m-%d')
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo '')
+          if ! grep -q "^## ${VERSION}\b" CHANGELOG.md; then
+            if [ -n "$PREV_TAG" ]; then
+              CHANGES=$(git log --pretty='- %s' "$PREV_TAG"..HEAD)
+            else
+              CHANGES=$(git log --pretty='- %s')
+            fi
+            if [ -z "$CHANGES" ]; then
+              CHANGES='- Maintenance updates.'
+            fi
+            tmp=$(mktemp)
+            {
+              printf '## %s - %s\n\n' "$VERSION" "$DATE"
+              printf '%s\n\n' "$CHANGES"
+              cat CHANGELOG.md
+            } >"$tmp"
+            mv "$tmp" CHANGELOG.md
+          else
+            echo "Changelog already contains entry for ${VERSION}."
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md config.yaml
+          if git diff --cached --quiet; then
+            echo "No changelog updates detected; skipping commit."
+            exit 0
+          fi
+          branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git commit -m "chore: update changelog for $VERSION"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:"$branch"
+
+      - name: Fetch tags
+        run: git fetch origin --tags --force
+
+      - name: Ensure release tag
+        id: tag_step
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists."
+          else
+            git tag -a "$tag" -m "Firefly III Add-on ${VERSION}"
+            git push origin "$tag"
+          fi
+
+      - name: Create or update GitHub release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; skipping creation."
+          else
+            gh release create "$tag" \
+              --title "Firefly III Add-on v${VERSION}" \
+              --generate-notes
+          fi

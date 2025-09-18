@@ -1,0 +1,47 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile with Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Lint shell scripts with ShellCheck
+        uses: ludeeus/action-shellcheck@1.1.0
+        env:
+          SHELLCHECK_OPTS: -s sh
+
+      - name: Lint YAML with yamllint
+        uses: frenck/action-yamllint@v1
+
+      - name: Lint Markdown with markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@v15
+        with:
+          globs: |
+            **/*.md
+
+      - name: Validate JSON files with jq
+        run: |
+          set -euo pipefail
+          files=$(git ls-files '*.json')
+          if [ -n "$files" ]; then
+            for file in $files; do
+              jq empty "$file"
+            done
+          else
+            echo "No JSON files to validate."
+          fi
