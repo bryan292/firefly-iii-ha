@@ -1,3 +1,7 @@
+## 0.0.3 - 2025-09-18
+
+- chore(deps): ensure target-branch is set for docker and github-actions updates
+
 ## 0.0.2 - 2025-09-18
 
 - chore(deps): Bump ludeeus/action-shellcheck from 1.1.0 to 2.0.0 (#8)
