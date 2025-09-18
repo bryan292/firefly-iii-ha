@@ -1,0 +1,7 @@
+name: Firefly III Add-on
+url: https://github.com/bryan292/firefly-iii-ha
+maintainer: bryan292@outlook.com
+resources:
+  issue_tracker: https://github.com/bryan292/firefly-iii-ha/issues
+  source: https://github.com/bryan292/firefly-iii-ha
+  documentation: https://github.com/bryan292/firefly-iii-ha#readme

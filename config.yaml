@@ -1,0 +1,44 @@
+name: "Firefly III"
+slug: "firefly-iii"
+version: "0.0.0"
+description: "Firefly III personal finance manager as a Home Assistant add-on with Ingress."
+url: "https://github.com/bryan292/firefly-iii-ha"
+documentation: "https://github.com/bryan292/firefly-iii-ha#readme"
+icon: "icon.png"
+logo: "icon.png"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8080
+panel_icon: "mdi:finance"
+panel_title: "Firefly III"
+host_network: false
+homeassistant_api: false
+init: false
+map:
+  - data:rw
+watchdog: "tcp://[HOST]:[PORT:8080]"
+options:
+  db_connection: "sqlite"
+  db_host: "core-mariadb"
+  db_port: 3306
+  db_name: "firefly"
+  db_user: "firefly"
+  db_password: ""
+  timezone: "UTC"
+  site_owner: "owner@example.com"
+  generate_app_key: true
+schema:
+  db_connection: list(sqlite|mysql)
+  db_host: str
+  db_port: int
+  db_name: str
+  db_user: str
+  db_password: password
+  timezone: list(UTC|America/New_York|America/Chicago|America/Denver|America/Los_Angeles|America/Costa_Rica|Europe/London|Europe/Berlin|Europe/Paris|Asia/Tokyo|Asia/Singapore|Australia/Sydney)
+  site_owner: str
+  generate_app_key: bool

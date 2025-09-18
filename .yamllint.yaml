@@ -1,0 +1,11 @@
+extends: default
+
+rules:
+  document-start: disable
+  line-length:
+    max: 220
+    allow-non-breakable-words: true
+  truthy:
+    ignore: |
+      .github/workflows/auto-release.yml
+      .github/workflows/lint.yml

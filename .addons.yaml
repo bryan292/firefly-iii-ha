@@ -1,0 +1,7 @@
+---
+channel: stable
+addons:
+  firefly-iii:
+    repository: bryan292/firefly-iii-ha
+    target: firefly-iii
+    image: ghcr.io/home-assistant/{arch}-addon-firefly-iii
