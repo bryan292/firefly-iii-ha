@@ -1,4 +1,4 @@
-FROM fireflyiii/core:version-6.4.0
+FROM fireflyiii/core:version-6.4.2
 
 # Add bootstrap script with executable bit at copy-time (no chmod RUN needed)
 COPY --chmod=0755 run.sh /usr/local/bin/ha-run.sh
