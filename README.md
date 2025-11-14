@@ -44,6 +44,7 @@ All configuration is stored in `/data/options.json` by Home Assistant. The add-o
 - First startup may take a few minutes while dependencies install and database migrations execute.
 - For best reliability, ensure the MariaDB/MySQL server is running before starting the add-on.
 - Persistent storage (including Firefly III uploads) lives in `/data/firefly/storage`.
+- The add-on now exposes Firefly III on `http://<home-assistant-host>:8080`, so importers or API clients can talk to Firefly directly instead of going through ingress (which blocks POST/PUT calls).
 - To rotate credentials, stop the add-on, update the options, then start it again.
 - The health check is served from `/public/healthcheck.html`, enabling Home Assistant's watchdog.
 
