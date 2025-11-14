@@ -1,3 +1,7 @@
+## 0.0.4 - 2025-11-14
+
+- Dev (#15)
+
 ## 0.0.3 - 2025-09-18
 
 - chore(deps): ensure target-branch is set for docker and github-actions updates
