@@ -29,7 +29,7 @@ jobs:
         uses: frenck/action-yamllint@v1
 
       - name: Lint Markdown with markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@v20
+        uses: DavidAnson/markdownlint-cli2-action@v21
         with:
           globs: |
             **/*.md
