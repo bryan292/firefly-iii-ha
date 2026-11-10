@@ -57,4 +57,4 @@ schema:
   mail_username: str?
   mail_password: password?
   mail_encryption: list(tls|ssl)?
-  mail_from: email?
+  mail_from: str?

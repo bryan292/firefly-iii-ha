@@ -22,8 +22,16 @@ class StartupTests(unittest.TestCase):
     def setUp(self):
         self.data = tempfile.TemporaryDirectory()
         self.addCleanup(self.data.cleanup)
+        # Containers write as root. Restore host ownership before tempfile cleanup
+        # on native Linux (Docker Desktop masks this difference on macOS).
+        self.addCleanup(lambda: self.data_command('chown', '-R',
+                                                 f'{os.getuid()}:{os.getgid()}', '/data'))
         self.name = 'firefly-test-' + uuid.uuid4().hex[:12]
         self.addCleanup(lambda: docker('rm', '-f', self.name))
+
+    def data_command(self, *args):
+        return docker('run', '--rm', '--entrypoint', args[0],
+                      '-v', self.data.name + ':/data', IMAGE, *args[1:])
 
     def start(self, options=None, env=None, expect_failure=False, mysql=False):
         Path(self.data.name, 'options.json').write_text(json.dumps(options or {}))
@@ -82,7 +90,7 @@ class StartupTests(unittest.TestCase):
     def test_disabled_generation_with_missing_key_fails(self):
         self.start({'generate_app_key': False}, 'APP_KEY=""\n', expect_failure=True)
         self.assertIn('generate_app_key is false', docker('logs', self.name))
-        self.assertNotIn('base64:', Path(self.data.name, 'firefly/.env').read_text())
+        self.assertNotIn('base64:', self.data_command('cat', '/data/firefly/.env'))
 
     def test_placeholder_is_replaced(self):
         self.start({'generate_app_key': True}, 'APP_KEY=SomeRandomStringOf32CharsExactly\n')
