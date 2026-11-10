@@ -1,6 +1,6 @@
 ## 0.0.5 - 2025-11-14
 
-- feat: expose Firefly III on http://<home-assistant-host>:8080 for direct API access
+- feat: expose Firefly III on `http://<home-assistant-host>:8080` for direct API access
 
 ## 0.0.4 - 2025-11-14
 
@@ -23,4 +23,3 @@
 
 - feat: Add Firefly III Home Assistant add-on
 - Add initial files for Firefly III Home Assistant add-on
-

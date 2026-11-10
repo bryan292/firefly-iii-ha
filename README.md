@@ -26,9 +26,10 @@ Learn more about the upstream project:
 5. Use **OPEN** to launch Firefly III through Supervisor ingress.
 
 ## Configuration
+
 | Option | Default | Description |
 | --- | --- | --- |
-| `db_connection` | `sqlite` | Choose `sqlite` for local storage or `mysql`/`mariadb` for an external database. |
+| `db_connection` | `sqlite` | Choose `sqlite` for local storage or `mysql` for an external MySQL/MariaDB database. |
 | `db_host` | `core-mariadb` | Hostname of your MariaDB/MySQL server when `db_connection` is `mysql`. |
 | `db_port` | `3306` | Database port. |
 | `db_name` | `firefly` | Database schema name. |
@@ -36,7 +37,17 @@ Learn more about the upstream project:
 | `db_password` | `""` | Database password (blank when using SQLite). |
 | `timezone` | `UTC` | Select from the bundled list of timezones (UTC, America/New_York, America/Chicago, America/Denver, America/Los_Angeles, America/Costa_Rica, Europe/London, Europe/Berlin, Europe/Paris, Asia/Tokyo, Asia/Singapore, Australia/Sydney). |
 | `site_owner` | `owner@example.com` | Email address shown for the site owner in Firefly III. |
-| `generate_app_key` | `true` | When true, the add-on creates or refreshes the Laravel `APP_KEY` during startup. |
+| `generate_app_key` | `true` | Generate a missing Laravel `APP_KEY` on startup. Existing keys are preserved, including on restart. |
+| `mail_mailer` | `log` | Use `smtp` to send email, or `log` to keep email in application logs. |
+| `mail_host` | `""` | SMTP server hostname; required when `mail_mailer` is `smtp`. |
+| `mail_port` | `587` | SMTP server port (typically 587 for STARTTLS or 465 for implicit TLS). |
+| `mail_username` | `""` | SMTP authentication username. |
+| `mail_password` | `""` | SMTP authentication password. |
+| `mail_encryption` | `tls` | `tls` for SMTP with STARTTLS, or `ssl` for implicit TLS (SMTPS). |
+| `mail_from` | `""` | Sender email address; defaults to `site_owner` when empty. |
+
+SMTP settings must be entered explicitly; the add-on does not inherit Home Assistant's notification configuration.
+Existing installations without mail options continue using the `log` mailer.
 
 All configuration is stored in `/data/options.json` by Home Assistant. The add-on keeps `/data/firefly/.env` in sync so manual edits are rarely required.
 
@@ -44,6 +55,7 @@ All configuration is stored in `/data/options.json` by Home Assistant. The add-o
 - First startup may take a few minutes while dependencies install and database migrations execute.
 - For best reliability, ensure the MariaDB/MySQL server is running before starting the add-on.
 - Persistent storage (including Firefly III uploads) lives in `/data/firefly/storage`.
+- SQLite uses `/data/firefly/database.sqlite`, which is preserved across restarts and upgrades. Changing `db_connection` selects a different database; it does not migrate existing data.
 - The add-on now exposes Firefly III on `http://<home-assistant-host>:8080`, so importers or API clients can talk to Firefly directly instead of going through ingress (which blocks POST/PUT calls).
 - To rotate credentials, stop the add-on, update the options, then start it again.
 - The health check is served from `/public/healthcheck.html`, enabling Home Assistant's watchdog.
@@ -57,7 +69,20 @@ All configuration is stored in `/data/options.json` by Home Assistant. The add-o
 ## Troubleshooting
 - If **OPEN** is disabled, verify the add-on is running and review the Supervisor logs.
 - The startup script retries database connectivity up to 15 times before giving up.
-- To reset the application key, set `generate_app_key: true` and remove `APP_KEY` from `/data/firefly/.env` (advanced use only).
+- `generate_app_key: true` generates a key only when it is missing or still the upstream template placeholder. A valid existing key is always reused.
+- With `generate_app_key: false`, you must provide an existing `APP_KEY` in `/data/firefly/.env`; otherwise startup stops.
+- Preserve your application key and include it in backups: changing it invalidates sessions and can make encrypted data unreadable.
+
+## Development checks
+Run the startup regression tests against the real application image:
+
+```sh
+docker build -t firefly-ha:test .
+python3 -m unittest discover -s tests -v
+```
+
+The tests cover SQLite migrations and persistence, APP_KEY generation and reuse, SMTP configuration and secret escaping, and MySQL configuration compatibility.
+They use temporary local containers and do not send email.
 
 ## License
 Distributed under the terms of the [MIT License](LICENSE).

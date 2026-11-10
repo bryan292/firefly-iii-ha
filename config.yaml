@@ -34,6 +34,13 @@ options:
   timezone: "UTC"
   site_owner: "owner@example.com"
   generate_app_key: true
+  mail_mailer: "log"
+  mail_host: ""
+  mail_port: 587
+  mail_username: ""
+  mail_password: ""
+  mail_encryption: "tls"
+  mail_from: ""
 schema:
   db_connection: list(sqlite|mysql)
   db_host: str
@@ -44,3 +51,10 @@ schema:
   timezone: list(UTC|America/New_York|America/Chicago|America/Denver|America/Los_Angeles|America/Costa_Rica|Europe/London|Europe/Berlin|Europe/Paris|Asia/Tokyo|Asia/Singapore|Australia/Sydney)
   site_owner: str
   generate_app_key: bool
+  mail_mailer: list(log|smtp)?
+  mail_host: str?
+  mail_port: port?
+  mail_username: str?
+  mail_password: password?
+  mail_encryption: list(tls|ssl)?
+  mail_from: email?

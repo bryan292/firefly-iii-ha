@@ -4,7 +4,8 @@ set -eu
 APP_DIR="${APP_DIR:-/var/www/html}"
 HA_DATA_DIR="${HA_DATA_DIR:-/data/firefly}"
 PORT="${PORT:-8080}"
-OPTIONS_FILE="/data/options.json"
+OPTIONS_FILE="${OPTIONS_FILE:-/data/options.json}"
+export OPTIONS_FILE
 
 LOG_LEVEL="${LOG_LEVEL:-info}"
 DEFAULT_LOG_DIR="${HA_DATA_DIR}/logs"
@@ -134,7 +135,7 @@ get_opt() {
       if (!file_exists(\$f)) { exit; }
       \$o = json_decode(file_get_contents(\$f), true);
       \$k = \$argv[1];
-      if (is_array(\$o) && array_key_exists(\$k, \$o) && \$o[\$k] !== '' && \$o[\$k] !== null) { echo \$o[\$k]; }
+      if (is_array(\$o) && array_key_exists(\$k, \$o) && \$o[\$k] !== '' && \$o[\$k] !== null) { echo is_bool(\$o[\$k]) ? (\$o[\$k] ? 'true' : 'false') : \$o[\$k]; }
     " "$key" 2>/dev/null || true)
     if [ -n "${val:-}" ]; then
       printf "%s" "$val"
@@ -144,6 +145,11 @@ get_opt() {
   printf "%s" "$default"
 }
 
+DB_CONNECTION="$(get_opt db_connection sqlite)"
+case "$DB_CONNECTION" in
+  sqlite|mysql) ;;
+  *) log_error "Unsupported database connection: $DB_CONNECTION"; exit 1 ;;
+esac
 DB_HOST="$(get_opt db_host core-mariadb)"
 DB_PORT="$(get_opt db_port 3306)"
 DB_NAME="$(get_opt db_name firefly)"
@@ -153,7 +159,30 @@ TIMEZONE="$(get_opt timezone UTC)"
 SITE_OWNER="$(get_opt site_owner owner@example.com)"
 GENERATE_APP_KEY="$(get_opt generate_app_key true)"
 
-log_info "Database configuration: host=$DB_HOST port=$DB_PORT database=$DB_NAME user=$DB_USER password_set=$( [ -n "$DB_PASSWORD" ] && printf 'yes' || printf 'no' )"
+MAIL_MAILER="$(get_opt mail_mailer log)"
+MAIL_HOST="$(get_opt mail_host '')"
+MAIL_PORT="$(get_opt mail_port 587)"
+MAIL_USERNAME="$(get_opt mail_username '')"
+MAIL_PASSWORD="$(get_opt mail_password '')"
+MAIL_ENCRYPTION="$(get_opt mail_encryption tls)"
+MAIL_FROM="$(get_opt mail_from "$SITE_OWNER")"
+case "$MAIL_ENCRYPTION" in
+  tls) MAIL_SCHEME=smtp ;;
+  ssl) MAIL_SCHEME=smtps ;;
+  *) log_error "Unsupported mail encryption: $MAIL_ENCRYPTION"; exit 1 ;;
+esac
+case "$MAIL_MAILER" in
+  log) ;;
+  smtp)
+    if [ -z "$MAIL_HOST" ]; then
+      log_error "mail_host is required when mail_mailer is smtp."
+      exit 1
+    fi
+    ;;
+  *) log_error "Unsupported mail mailer: $MAIL_MAILER"; exit 1 ;;
+esac
+
+log_info "Database configuration: connection=$DB_CONNECTION host=$DB_HOST port=$DB_PORT database=$DB_NAME user=$DB_USER password_set=$( [ -n "$DB_PASSWORD" ] && printf 'yes' || printf 'no' )"
 log_info "Timezone set to '$TIMEZONE'"
 log_info "Site owner email set to '$SITE_OWNER'"
 log_info "APP_KEY auto-generation enabled: $GENERATE_APP_KEY"
@@ -284,6 +313,9 @@ run_cmd() {
 
 set_kv() {
   key="$1"; value="$2"
+  # PHP variables must remain literal here.
+  # shellcheck disable=SC2016
+  value="$(php -r 'echo chr(34) . str_replace([chr(92), chr(34), chr(36), chr(10), chr(13)], [chr(92).chr(92), chr(92).chr(34), chr(92).chr(36), chr(92)."n", chr(92)."r"], $argv[1]) . chr(34);' "$value")"
   tmpfile="$(mktemp /tmp/firefly-env.XXXXXX)"
   found=0
   modified=0
@@ -380,16 +412,32 @@ set_kv TRUSTED_PROXIES "**"
 set_kv LOG_CHANNEL "stack"
 set_kv SITE_OWNER "$SITE_OWNER"
 
+# SQLite must use persistent storage and must never be truncated on restart.
+DB_DATABASE="$DB_NAME"
+if [ "$DB_CONNECTION" = "sqlite" ]; then
+  DB_DATABASE="$HA_DATA_DIR/database.sqlite"
+  if [ ! -f "$DB_DATABASE" ]; then
+    touch "$DB_DATABASE"
+  fi
+fi
+
 # DB env
-set_kv DB_CONNECTION "mysql"
+set_kv DB_CONNECTION "$DB_CONNECTION"
 set_kv DB_HOST "$DB_HOST"
 set_kv DB_PORT "$DB_PORT"
-set_kv DB_DATABASE "$DB_NAME"
+set_kv DB_DATABASE "$DB_DATABASE"
 set_kv DB_USERNAME "$DB_USER"
 set_kv DB_PASSWORD "$DB_PASSWORD"
 
-# Mail defaults
-set_kv MAIL_MAILER "log"
+# Explicit mail settings override defaults inherited from the upstream image.
+set_kv MAIL_MAILER "$MAIL_MAILER"
+set_kv MAIL_HOST "$MAIL_HOST"
+set_kv MAIL_PORT "$MAIL_PORT"
+set_kv MAIL_USERNAME "$MAIL_USERNAME"
+set_kv MAIL_PASSWORD "$MAIL_PASSWORD"
+set_kv MAIL_ENCRYPTION "$MAIL_ENCRYPTION"
+set_kv MAIL_SCHEME "$MAIL_SCHEME"
+set_kv MAIL_FROM "$MAIL_FROM"
 
 sync_app_env
 
@@ -398,34 +446,45 @@ export TZ="$TIMEZONE"
 export TRUSTED_PROXIES="**"
 export LOG_CHANNEL="stack"
 export SITE_OWNER="$SITE_OWNER"
-export DB_CONNECTION="mysql"
+export DB_CONNECTION
 export DB_HOST="$DB_HOST"
 export DB_PORT="$DB_PORT"
-export DB_DATABASE="$DB_NAME"
+export DB_DATABASE
 export DB_USERNAME="$DB_USER"
 export DB_PASSWORD="$DB_PASSWORD"
-export MAIL_MAILER="log"
+export MAIL_MAILER MAIL_HOST MAIL_PORT MAIL_USERNAME MAIL_PASSWORD
+export MAIL_ENCRYPTION MAIL_SCHEME MAIL_FROM
 log_debug "Core environment variables exported (sensitive values redacted)."
 
+read_app_key() {
+  # shellcheck disable=SC2016
+  php -r '
+    require $argv[1] . "/vendor/autoload.php";
+    $values = Dotenv\Dotenv::parse(file_get_contents($argv[2]));
+    echo $values["APP_KEY"] ?? "";
+  ' "$APP_DIR" "$ENV_FILE"
+}
+
 ensure_app_key() {
-  current_key="$(grep '^APP_KEY=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)"
-  if [ "$GENERATE_APP_KEY" = "true" ] && { [ -z "$current_key" ] || [ "$current_key" = "" ]; }; then
-    log_info "APP_KEY missing; attempting artisan key generation."
-    if ! run_cmd php artisan key:generate --force --no-ansi; then
-      log_warn "Artisan key:generate reported an error; will attempt manual key generation if needed."
+  current_key="$(read_app_key)"
+  case "$current_key" in
+    ''|SomeRandomStringOf32CharsExactly) current_key="" ;;
+  esac
+  if [ -z "$current_key" ] && [ "$GENERATE_APP_KEY" = "true" ]; then
+    log_info "APP_KEY missing or still a template value; generating a persistent key."
+    # --show avoids writing through a fallback .env copy and never logs the key.
+    current_key="$(php artisan key:generate --show --force --no-ansi)"
+    if [ -z "$current_key" ]; then
+      log_error "Artisan did not generate an APP_KEY. Startup aborted."
+      exit 1
     fi
+    set_kv APP_KEY "$current_key"
     sync_app_env
-    current_key="$(grep '^APP_KEY=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)"
-    if [ -z "$current_key" ] || [ "$current_key" = "" ]; then
-      log_warn "Artisan key:generate did not produce an APP_KEY; generating manually."
-      manual_key="base64:$(head -c 32 /dev/urandom | base64)"
-      set_kv APP_KEY "$manual_key"
-      sync_app_env
-      current_key="$manual_key"
-    fi
+  elif [ -n "$current_key" ]; then
+    log_info "Preserving existing APP_KEY."
   fi
-  if [ -z "$current_key" ] || [ "$current_key" = "" ]; then
-    log_error "APP_KEY is missing and could not be generated. Startup aborted."
+  if [ -z "$current_key" ]; then
+    log_error "APP_KEY is missing and generate_app_key is false. Startup aborted."
     exit 1
   fi
   export APP_KEY="$current_key"
