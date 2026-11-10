@@ -1,3 +1,7 @@
+## 0.0.7 - 2026-11-10
+
+- fix: allow default mail sender and clean up Linux test data
+
 ## 0.0.6 - 2026-11-10
 
 - fix: honor database, SMTP and application key options
