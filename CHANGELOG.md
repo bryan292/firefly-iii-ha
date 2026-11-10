@@ -1,3 +1,7 @@
+## 0.0.6 - 2026-11-10
+
+- fix: honor database, SMTP and application key options
+
 ## 0.0.5 - 2025-11-14
 
 - feat: expose Firefly III on `http://<home-assistant-host>:8080` for direct API access
