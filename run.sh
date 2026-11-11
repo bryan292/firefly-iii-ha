@@ -236,38 +236,11 @@ else
   log_debug "Compatibility healthcheck already present at '$ALT_HEALTHCHECK_FILE'."
 fi
 
-# Storage handling (non-destructive, no Nginx edits, no destructive ops)
-if [ -d "$APP_DIR/storage" ] && [ ! -L "$APP_DIR/storage" ]; then
-  log_info "Copying contents from $APP_DIR/storage to $STORAGE_DIR (non-destructive)"
-  if cp -a "$APP_DIR/storage/." "$STORAGE_DIR/" 2>/dev/null; then
-    log_debug "Seeded persistent storage with existing application data."
-  else
-    log_warn "Failed to copy initial storage contents from $APP_DIR/storage; continuing with existing data in $STORAGE_DIR."
-  fi
-  if ln -sfn "$STORAGE_DIR" "$APP_DIR/storage"; then
-    log_info "Linked $APP_DIR/storage → $STORAGE_DIR"
-  else
-    log_warn "Could not link $APP_DIR/storage; leaving as-is (likely busy)."
-  fi
-elif [ -L "$APP_DIR/storage" ]; then
-  target="$(readlink "$APP_DIR/storage")"
-  if [ "$target" != "$STORAGE_DIR" ]; then
-    if ln -sfn "$STORAGE_DIR" "$APP_DIR/storage"; then
-      log_info "Updated symlink $APP_DIR/storage → $STORAGE_DIR"
-    else
-      log_warn "Unable to update existing storage symlink from '$target' to '$STORAGE_DIR'."
-    fi
-  else
-    log_debug "Storage symlink already points to '$STORAGE_DIR'."
-  fi
-else
-  if ln -sfn "$STORAGE_DIR" "$APP_DIR/storage"; then
-    log_info "Created symlink $APP_DIR/storage → $STORAGE_DIR"
-  else
-    log_warn "Failed to create storage symlink; copying contents as fallback."
-    cp -a "$STORAGE_DIR/." "$APP_DIR/storage/" 2>/dev/null || log_warn "Fallback copy to $APP_DIR/storage failed."
-  fi
-fi
+# Upstream declares storage/upload as a Docker volume, so the directory cannot
+# be moved or replaced by a symlink. Use Laravel's supported storage override.
+cp -an "$APP_DIR/storage/." "$STORAGE_DIR/"
+export LARAVEL_STORAGE_PATH="$STORAGE_DIR"
+log_info "Using persistent Laravel storage at '$STORAGE_DIR'."
 
 run_cmd() {
   if [ "$#" -eq 0 ]; then
@@ -407,6 +380,7 @@ sync_app_env() {
 
 # Core env
 set_kv APP_ENV "production"
+set_kv LARAVEL_STORAGE_PATH "$STORAGE_DIR"
 set_kv TZ "$TIMEZONE"
 set_kv TRUSTED_PROXIES "**"
 set_kv LOG_CHANNEL "stack"
@@ -502,20 +476,25 @@ fi
 if ! run_cmd php artisan config:cache; then
   log_warn "Continuing despite failure of 'php artisan config:cache'."
 fi
-if ! run_cmd php artisan passport:keys --force; then
-  log_warn "Continuing despite failure of 'php artisan passport:keys --force'."
-fi
 
 migrate_attempts=0
 while ! run_cmd php artisan migrate --force --no-ansi; do
   migrate_attempts=$((migrate_attempts + 1))
   if [ "$migrate_attempts" -ge 15 ]; then
-    log_error "Migrations failed after $migrate_attempts attempts; proceeding without successful migration."
-    break
+    log_error "Migrations failed after $migrate_attempts attempts; startup aborted."
+    exit 1
   fi
   log_warn "Database not ready... retry $migrate_attempts/15"
   sleep 4
 done
+
+# Run the upstream upgrade sequence before exposing the application.
+# This includes seed data and Firefly-specific data conversions, not just DDL.
+run_cmd php artisan firefly-iii:upgrade-database --no-interaction
+run_cmd php artisan firefly-iii:laravel-passport-keys --no-interaction
+run_cmd php artisan firefly-iii:set-latest-version --james-is-cool
+run_cmd php artisan view:clear
+run_cmd php artisan cache:clear
 
 log_info "Starting PHP built-in server on 0.0.0.0:$PORT with document root $APP_DIR/public"
 ROUTER_FILE="$APP_DIR/ha-router.php"
@@ -523,6 +502,13 @@ if [ ! -f "$ROUTER_FILE" ]; then
   log_info "Creating PHP built-in router script at '$ROUTER_FILE'."
   if cat <<'EOPHP' >"$ROUTER_FILE" 2>/dev/null; then
 <?php
+// Laravel's storagePath reads superglobals, which the built-in web SAPI may
+// omit even when getenv() sees the exported path and config is cached.
+$storagePath = getenv('LARAVEL_STORAGE_PATH');
+if ($storagePath !== false && $storagePath !== '') {
+    $_ENV['LARAVEL_STORAGE_PATH'] = $storagePath;
+    $_SERVER['LARAVEL_STORAGE_PATH'] = $storagePath;
+}
 $publicPath = __DIR__ . '/public';
 $publicReal = realpath($publicPath) ?: $publicPath;
 $originalRequest = $_SERVER['REQUEST_URI'] ?? '/';
@@ -559,13 +545,21 @@ if ($stripped !== '/' && $fullPath && strpos($fullPath, $publicReal) === 0 && is
     return false;
 }
 
-header_register_callback(function () use ($upstreamScheme, $upstreamHost) {
+if ($ingressHeader !== '') {
+    require_once '/usr/local/lib/firefly-ha-ingress.php';
+    ha_ingress_response($forcedUrl, rtrim($ingressHeader, '/'));
+}
+
+header_register_callback(function () use ($upstreamScheme, $upstreamHost, $ingressHeader) {
     $allowedOrigin = $upstreamScheme . '://' . $upstreamHost;
     header_remove('X-Frame-Options');
     header('X-Frame-Options: ALLOWALL');
     $csp = "frame-ancestors 'self' $allowedOrigin";
     header_remove('Content-Security-Policy');
     header('Content-Security-Policy: ' . $csp);
+    if ($ingressHeader !== '') {
+        ha_ingress_redirects(rtrim($allowedOrigin . rtrim($ingressHeader, '/'), '/'), rtrim($ingressHeader, '/'));
+    }
 });
 
 require_once $publicPath . '/index.php';

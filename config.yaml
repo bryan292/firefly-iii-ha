@@ -9,7 +9,6 @@ logo: "icon.png"
 arch:
   - amd64
   - aarch64
-  - armv7
 startup: application
 boot: auto
 ingress: true

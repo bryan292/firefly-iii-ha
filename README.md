@@ -18,6 +18,8 @@ Learn more about the upstream project:
 - Ships with bundled icon/graphics for a polished appearance in the add-on store.
 
 ## Installation
+The add-on packages Firefly III 6.7.9 and supports amd64 and aarch64 hosts.
+
 1. In Home Assistant, navigate to **Settings → Add-ons → Add-on Store**.
 2. Click the overflow menu (⋮) and choose **Repositories**, then add:
    - `https://github.com/bryan292/firefly-iii-ha`
@@ -52,9 +54,9 @@ Existing installations without mail options continue using the `log` mailer.
 All configuration is stored in `/data/options.json` by Home Assistant. The add-on keeps `/data/firefly/.env` in sync so manual edits are rarely required.
 
 ## Usage Notes
-- First startup may take a few minutes while dependencies install and database migrations execute.
+- Startup runs Laravel migrations and the Firefly III database upgrade commands before serving requests. Back up the add-on and any external database before upgrading.
 - For best reliability, ensure the MariaDB/MySQL server is running before starting the add-on.
-- Persistent storage (including Firefly III uploads) lives in `/data/firefly/storage`.
+- Persistent storage (including uploads, sessions and OAuth keys) lives in `/data/firefly/storage`, selected through `LARAVEL_STORAGE_PATH`. Existing keys are reused on restart.
 - SQLite uses `/data/firefly/database.sqlite`, which is preserved across restarts and upgrades. Changing `db_connection` selects a different database; it does not migrate existing data.
 - The add-on now exposes Firefly III on `http://<home-assistant-host>:8080`, so importers or API clients can talk to Firefly directly instead of going through ingress (which blocks POST/PUT calls).
 - To rotate credentials, stop the add-on, update the options, then start it again.
@@ -68,7 +70,7 @@ All configuration is stored in `/data/options.json` by Home Assistant. The add-o
 
 ## Troubleshooting
 - If **OPEN** is disabled, verify the add-on is running and review the Supervisor logs.
-- The startup script retries database connectivity up to 15 times before giving up.
+- The startup script retries migrations up to 15 times and stops if they keep failing.
 - `generate_app_key: true` generates a key only when it is missing or still the upstream template placeholder. A valid existing key is always reused.
 - With `generate_app_key: false`, you must provide an existing `APP_KEY` in `/data/firefly/.env`; otherwise startup stops.
 - Preserve your application key and include it in backups: changing it invalidates sessions and can make encrypted data unreadable.
