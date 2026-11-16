@@ -1,6 +1,6 @@
 name: "Firefly III"
 slug: "firefly-iii"
-version: "0.0.2"
+version: "0.0.8"
 description: "Firefly III personal finance manager as a Home Assistant add-on with Ingress."
 url: "https://github.com/bryan292/firefly-iii-ha"
 documentation: "https://github.com/bryan292/firefly-iii-ha#readme"
@@ -9,7 +9,6 @@ logo: "icon.png"
 arch:
   - amd64
   - aarch64
-  - armv7
 startup: application
 boot: auto
 ingress: true
@@ -21,6 +20,8 @@ homeassistant_api: false
 init: false
 map:
   - data:rw
+ports:
+  8080/tcp: 8080
 watchdog: "tcp://[HOST]:[PORT:8080]"
 options:
   db_connection: "sqlite"
@@ -32,6 +33,13 @@ options:
   timezone: "UTC"
   site_owner: "owner@example.com"
   generate_app_key: true
+  mail_mailer: "log"
+  mail_host: ""
+  mail_port: 587
+  mail_username: ""
+  mail_password: ""
+  mail_encryption: "tls"
+  mail_from: ""
 schema:
   db_connection: list(sqlite|mysql)
   db_host: str
@@ -42,3 +50,10 @@ schema:
   timezone: list(UTC|America/New_York|America/Chicago|America/Denver|America/Los_Angeles|America/Costa_Rica|Europe/London|Europe/Berlin|Europe/Paris|Asia/Tokyo|Asia/Singapore|Australia/Sydney)
   site_owner: str
   generate_app_key: bool
+  mail_mailer: list(log|smtp)?
+  mail_host: str?
+  mail_port: port?
+  mail_username: str?
+  mail_password: password?
+  mail_encryption: list(tls|ssl)?
+  mail_from: str?
